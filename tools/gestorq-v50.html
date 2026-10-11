@@ -1,0 +1,318 @@
+<!-- ═══════════════════════════════════════════════════════════════════
+     GestorQ v50 — camada final de correções de UX e segurança
+     - Botões flutuantes organizados em uma única coluna (sem sobreposição)
+     - Nada de botões flutuantes/menus na tela de login
+     - Menu "🔍 Menu" duplicado (cobria a barra lateral) removido
+     - Recuperação de acesso do admin protegida por código de recuperação
+     - Aviso quando o admin ainda usa a senha padrão
+     ═══════════════════════════════════════════════════════════════════ -->
+<style id="gestorq-v50-style">
+/* Menu flutuante duplicado: cobria a navegação lateral real. Atalhos continuam em Ctrl+K. */
+#ultraToolbar,
+#qxbiBadge { display:none !important; }
+/* Segundo botão "+" de atalhos (Perdas/Vencidos/Temperatura) ficava em cima do
+   botão de comandos; o botão "+" principal já oferece essas mesmas ações. */
+#qxmAtalhoWrap { display:none !important; }
+/* Botão de diagnóstico não pode cobrir o item "Mais" da barra lateral */
+@media (min-width: 1024px) { #qx-fab-diag { left: 18px !important; top: auto !important; bottom: 16px !important; } }
+
+/* Antes do login: só o formulário */
+body:not(.qx50-auth) #q18Launcher,
+body:not(.qx50-auth) #ultraDockBtn,
+body:not(.qx50-auth) #ultraPaletteBtn,
+body:not(.qx50-auth) #v22CommandBarToggle,
+body:not(.qx50-auth) #v22WorkspaceBtn,
+body:not(.qx50-auth) #qx-fab-diag,
+body:not(.qx50-auth) #qxQuickActions,
+body:not(.qx50-auth) #qxScrollTop,
+body:not(.qx50-auth) #qx50Dock { display:none !important; }
+
+/* Botão de diagnóstico só para administradores */
+body:not(.qx50-admin) #qx-fab-diag { display:none !important; }
+
+/* Coluna única de ações flutuantes */
+#qx50Dock {
+  position: fixed; right: 16px; bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  z-index: 520; display: flex; flex-direction: column; align-items: flex-end; gap: 10px;
+  pointer-events: none;
+}
+#qx50Dock > * { pointer-events: auto; }
+#qx50Dock > #q18Launcher,
+#qx50Dock > #v22WorkspaceBtn,
+#qx50Dock > #ultraDockBtn,
+#qx50Dock > #ultraPaletteBtn,
+#qx50Dock > #fab {
+  position: static !important; inset: auto !important; margin: 0 !important;
+  width: 48px !important; height: 48px !important; min-width: 0 !important;
+  padding: 0 !important; border-radius: 14px !important;
+  display: flex !important; align-items: center !important; justify-content: center !important;
+  font-size: 1.15rem !important; line-height: 1 !important; overflow: hidden !important;
+  white-space: nowrap !important; box-shadow: 0 8px 22px rgba(0,0,0,.35) !important;
+}
+#qx50Dock > #fab { width: 56px !important; height: 56px !important; border-radius: 18px !important; font-size: 1.5rem !important; }
+/* "BI Enterprise" vira ícone; o texto aparece ao passar o mouse */
+#qx50Dock > #q18Launcher { font-size: 0 !important; }
+#qx50Dock > #q18Launcher::before { content: '🏢'; font-size: 1.15rem; }
+#qx50Dock > [data-qx50-tip] { position: relative !important; }
+#qx50Dock > [data-qx50-tip]:hover::after {
+  content: attr(data-qx50-tip); position: absolute; right: calc(100% + 10px); top: 50%;
+  transform: translateY(-50%); background: #0f172a; color: #f8fafc; border: 1px solid #334155;
+  font: 600 12px/1.2 Inter, system-ui, sans-serif; padding: 6px 10px; border-radius: 8px; white-space: nowrap;
+}
+#qx50Dock > #q18Launcher:hover::after { font-size: 12px; }
+/* Atalhos secundários aparecem só no Dashboard */
+body:not(.qx50-dash) #qx50Dock > #q18Launcher,
+body:not(.qx50-dash) #qx50Dock > #v22WorkspaceBtn,
+body:not(.qx50-dash) #qx50Dock > #ultraDockBtn { display: none !important; }
+/* Painel de ações rápidas abre à esquerda da coluna */
+body.qx50-auth #qxQuickActions { right: 84px !important; bottom: calc(16px + env(safe-area-inset-bottom, 0px)) !important; }
+
+/* O recuo de 200px reservado ao menu flutuante (agora oculto) espremia o
+   conteúdo no celular (sobravam ~170px de largura). */
+@media (max-width: 1023.98px) {
+  html body.ultra-toolbar-open #mainScroll { padding-left: 14px !important; padding-right: 14px !important; }
+}
+/* Desktop: conteúdo começa logo após a barra lateral (200px) */
+@media (min-width: 1024px) {
+  html body.ultra-toolbar-open #mainScroll {
+    margin-left: 200px !important; margin-right: auto !important;
+    max-width: min(1480px, calc(100vw - 200px)) !important;
+    padding-left: 28px !important; padding-right: 28px !important;
+  }
+}
+
+/* Barra lateral (desktop): ícone e rótulo alinhados lado a lado */
+@media (min-width: 1024px) {
+  #pwaNav .nav-btn { justify-content: flex-start !important; gap: 12px !important; }
+  #pwaNav .nav-btn .nav-ico { margin: 0 !important; flex: 0 0 22px !important; }
+  #pwaNav .nav-btn .nl { margin: 0 !important; flex: 1 1 auto !important; text-align: left !important; position: static !important; }
+}
+/* Celular: coluna acima da barra de navegação inferior */
+@media (max-width: 768px) {
+  #qx50Dock { right: 12px; bottom: calc(var(--nav-h, 60px) + env(safe-area-inset-bottom, 0px) + 12px); }
+  body.qx50-auth #qxQuickActions { right: 76px !important; bottom: calc(var(--nav-h, 60px) + env(safe-area-inset-bottom, 0px) + 12px) !important; }
+}
+
+/* Modal de recuperação / aviso de senha padrão */
+.qx50-ov { position: fixed; inset: 0; z-index: 100000; background: rgba(2,6,23,.72); backdrop-filter: blur(4px);
+  display: flex; align-items: center; justify-content: center; padding: 16px; }
+.qx50-box { width: 100%; max-width: 420px; background: #0f172a; color: #e2e8f0; border: 1px solid #334155;
+  border-radius: 18px; padding: 22px; box-shadow: 0 24px 60px rgba(0,0,0,.5); font-family: Inter, system-ui, sans-serif; }
+.qx50-box h3 { margin: 0 0 6px; font-size: 1.1rem; color: #f8fafc; }
+.qx50-box p { margin: 0 0 14px; font-size: .86rem; color: #94a3b8; line-height: 1.45; }
+.qx50-box label { display: block; font-size: .75rem; font-weight: 700; color: #cbd5e1; margin: 10px 0 4px; text-transform: uppercase; letter-spacing: .04em; }
+.qx50-box input { width: 100%; box-sizing: border-box; padding: 11px 12px; border-radius: 10px; border: 1px solid #334155;
+  background: #020617; color: #f8fafc; font-size: .95rem; }
+.qx50-box input:focus { outline: 2px solid #6366f1; outline-offset: 1px; }
+.qx50-code { font: 700 1.6rem/1.2 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .12em; text-align: center;
+  background: #020617; border: 1px dashed #6366f1; border-radius: 12px; padding: 14px; margin: 6px 0 14px; color: #c7d2fe; user-select: all; }
+.qx50-row { display: flex; gap: 8px; margin-top: 16px; }
+.qx50-row button { flex: 1; padding: 11px; border-radius: 10px; border: 0; font-weight: 700; cursor: pointer; font-size: .9rem; }
+.qx50-pri { background: linear-gradient(135deg,#4f46e5,#2563eb); color: #fff; }
+.qx50-sec { background: #1e293b; color: #cbd5e1; }
+.qx50-err { color: #fca5a5; font-size: .8rem; min-height: 1.1em; margin-top: 8px; }
+#qx50PwdBanner { position: fixed; left: 50%; transform: translateX(-50%); top: 66px; z-index: 9000; max-width: calc(100% - 32px);
+  background: #451a03; color: #fde68a; border: 1px solid #b45309; border-radius: 12px; padding: 10px 14px;
+  font: 600 .84rem/1.35 Inter, system-ui, sans-serif; display: flex; gap: 10px; align-items: center; box-shadow: 0 10px 30px rgba(0,0,0,.4); }
+#qx50PwdBanner button { border: 0; border-radius: 8px; padding: 6px 10px; font-weight: 700; cursor: pointer; background: #f59e0b; color: #1c1917; white-space: nowrap; }
+#qx50PwdBanner button.x { background: transparent; color: #fde68a; padding: 6px; }
+</style>
+
+<script id="gestorq-v50">
+(function(){
+  'use strict';
+  if (window.__GESTORQ_V50__) return;
+  window.__GESTORQ_V50__ = true;
+
+  var RECOVERY_KEY = 'qx_admin_recovery_hash';
+  var DEFAULT_ADMIN_PASSES = ['1234', '1798', 'admin']; // senhas iniciais usadas pelas versões anteriores
+
+  function $(id){ return document.getElementById(id); }
+  function notify(msg, type){ try { (window.showNotification || function(m){ alert(m); })(msg, type || 'info'); } catch(e){} }
+  function getUsers(){ try { return JSON.parse(localStorage.getItem('users') || '[]'); } catch(e){ return []; } }
+  function saveUsers(u){ localStorage.setItem('users', JSON.stringify(u)); }
+  function curUser(){
+    try { if (window.currentUser) return window.currentUser; } catch(e){}
+    try { if (typeof currentUser !== 'undefined' && currentUser) return currentUser; } catch(e){}
+    return null;
+  }
+  function isLogged(){
+    var aw = $('authWrap');
+    return !!curUser() && (!aw || aw.classList.contains('gone') || aw.style.display === 'none' || document.body.classList.contains('main-app-active'));
+  }
+  function isAdmin(){ var u = curUser(); return !!u && /^(admin|administrador)$/i.test(String(u.role || '')); }
+
+  async function sha256(txt){
+    if (typeof window.hashPassword === 'function') return window.hashPassword(txt);
+    var buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(txt));
+    return Array.from(new Uint8Array(buf)).map(function(b){ return b.toString(16).padStart(2,'0'); }).join('');
+  }
+  function newRecoveryCode(){
+    var A = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789', out = '';
+    var r = new Uint32Array(12); crypto.getRandomValues(r);
+    for (var i = 0; i < 12; i++) out += A[r[i] % A.length] + ((i === 3 || i === 7) ? '-' : '');
+    return out;
+  }
+  function normCode(c){ return String(c || '').toUpperCase().replace(/[^A-Z0-9]/g, ''); }
+
+  function overlay(html){
+    var ov = document.createElement('div');
+    ov.className = 'qx50-ov';
+    ov.innerHTML = '<div class="qx50-box" role="dialog" aria-modal="true">' + html + '</div>';
+    document.body.appendChild(ov);
+    return ov;
+  }
+
+  /* ── Código de recuperação ─────────────────────────────────────── */
+  async function showNewRecoveryCode(){
+    var code = newRecoveryCode();
+    localStorage.setItem(RECOVERY_KEY, await sha256('qx-rec:' + normCode(code)));
+    var ov = overlay(
+      '<h3>🔑 Código de recuperação do admin</h3>' +
+      '<p>Guarde este código em local seguro (fora do aparelho). Ele é a única forma de redefinir a senha do administrador se ela for esquecida. Ele não será mostrado novamente.</p>' +
+      '<div class="qx50-code">' + code + '</div>' +
+      '<div class="qx50-row"><button class="qx50-sec" data-a="copy">Copiar</button><button class="qx50-pri" data-a="ok">Já guardei</button></div>'
+    );
+    ov.addEventListener('click', function(e){
+      var a = e.target.getAttribute && e.target.getAttribute('data-a');
+      if (a === 'copy') { try { navigator.clipboard.writeText(code); notify('📋 Código copiado.', 'success'); } catch(_){} }
+      if (a === 'ok') ov.remove();
+    });
+  }
+  window.qxGerarCodigoRecuperacao = function(){
+    if (!isAdmin()) return notify('🚫 Apenas o administrador pode gerar o código.', 'danger');
+    showNewRecoveryCode();
+  };
+
+  /* ── Recuperar acesso (tela de login) ──────────────────────────── */
+  window.qxOpenRecovery = function(){
+    var hasCode = !!localStorage.getItem(RECOVERY_KEY);
+    var ov = overlay(
+      '<h3>🔑 Recuperar acesso do administrador</h3>' +
+      (hasCode
+        ? '<p>Informe o código de recuperação gerado no primeiro acesso do admin e defina uma nova senha. Os bloqueios por tentativas também serão liberados.</p><label>Código de recuperação</label><input id="qx50RecCode" autocomplete="off" placeholder="XXXX-XXXX-XXXX">'
+        : '<p>Este aparelho ainda não tem código de recuperação (ele é criado no primeiro login do admin). Defina uma nova senha para o admin; um código será gerado no próximo login.</p>') +
+      '<label>Nova senha do admin</label><input id="qx50RecPass" type="password" autocomplete="new-password" placeholder="mínimo 6 caracteres">' +
+      '<label>Confirmar nova senha</label><input id="qx50RecPass2" type="password" autocomplete="new-password">' +
+      '<div class="qx50-err" id="qx50RecErr"></div>' +
+      '<div class="qx50-row"><button class="qx50-sec" data-a="cancel">Cancelar</button><button class="qx50-pri" data-a="go">Redefinir</button></div>'
+    );
+    var first = ov.querySelector('input'); if (first) setTimeout(function(){ first.focus(); }, 30);
+    ov.addEventListener('click', async function(e){
+      if (e.target === ov) return ov.remove();
+      var a = e.target.getAttribute && e.target.getAttribute('data-a');
+      if (a === 'cancel') return ov.remove();
+      if (a !== 'go') return;
+      var err = $('qx50RecErr');
+      var p1 = $('qx50RecPass').value, p2 = $('qx50RecPass2').value;
+      if (hasCode) {
+        var ok = (await sha256('qx-rec:' + normCode($('qx50RecCode').value))) === localStorage.getItem(RECOVERY_KEY);
+        if (!ok) { err.textContent = 'Código de recuperação inválido.'; return; }
+      }
+      if (p1.length < 6) { err.textContent = 'A nova senha precisa de pelo menos 6 caracteres.'; return; }
+      if (DEFAULT_ADMIN_PASSES.indexOf(p1) !== -1) { err.textContent = 'Escolha uma senha diferente da senha padrão.'; return; }
+      if (p1 !== p2) { err.textContent = 'As senhas não conferem.'; return; }
+      var users = getUsers();
+      var idx = users.findIndex(function(x){ return String(x.username || '').toLowerCase().trim() === 'admin'; });
+      var rec = { id: 'admin', username: 'admin', name: 'Administrador', role: 'admin', active: true, bloqueado: false, password: await sha256(p1) };
+      if (idx >= 0) users[idx] = Object.assign({}, users[idx], rec); else users.unshift(rec);
+      saveUsers(users);
+      ['loginFails_admin', 'loginLock_admin', 'loginLockUntil_admin'].forEach(function(k){ localStorage.removeItem(k); });
+      if (hasCode) localStorage.removeItem(RECOVERY_KEY); // código de uso único; novo código no próximo login
+      ov.remove();
+      var u = $('loginUser'); if (u) u.value = 'admin';
+      var p = $('loginPass'); if (p) { p.value = ''; p.focus(); }
+      notify('✅ Senha do admin redefinida. Entre com a nova senha.', 'success');
+    });
+  };
+  // Funções antigas que redefiniam o admin para admin/1234 sem qualquer verificação
+  window.resetAdminOffline = window.qxOpenRecovery;
+  window.openAdminUnlockModal = window.qxOpenRecovery;
+
+  /* ── Após login do admin: código de recuperação + aviso de senha padrão ── */
+  var adminChecked = false;
+  async function afterAdminLogin(){
+    if (adminChecked) return; adminChecked = true;
+    var users = getUsers();
+    var adm = users.find(function(x){ return String(x.username || '').toLowerCase().trim() === 'admin'; });
+    var usingDefault = false;
+    if (adm && adm.password && typeof window.verifyPassword === 'function') {
+      for (var i = 0; i < DEFAULT_ADMIN_PASSES.length && !usingDefault; i++) {
+        try { usingDefault = await window.verifyPassword(DEFAULT_ADMIN_PASSES[i], adm.password); } catch(e){}
+      }
+    }
+    if (usingDefault) showDefaultPwdBanner();
+    if (!localStorage.getItem(RECOVERY_KEY)) setTimeout(showNewRecoveryCode, 1200);
+  }
+  function showDefaultPwdBanner(){
+    if ($('qx50PwdBanner')) return;
+    var b = document.createElement('div');
+    b.id = 'qx50PwdBanner';
+    b.innerHTML = '<span>⚠️ O administrador ainda usa a senha padrão. Troque-a para proteger os dados.</span>' +
+      '<button data-a="go">Trocar senha</button><button class="x" data-a="x" title="Fechar">✕</button>';
+    b.addEventListener('click', function(e){
+      var a = e.target.getAttribute && e.target.getAttribute('data-a');
+      if (a === 'x') b.remove();
+      if (a === 'go') {
+        b.remove();
+        try { window.goPage('Config', $('navCfg')); } catch(_){}
+        setTimeout(function(){
+          var card = $('cardAdminSecurity');
+          if (card) { card.style.display = ''; card.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+        }, 400);
+      }
+    });
+    document.body.appendChild(b);
+  }
+
+  /* ── Coluna de botões flutuantes ───────────────────────────────── */
+  var DOCK_ORDER = ['q18Launcher', 'v22WorkspaceBtn', 'ultraDockBtn', 'ultraPaletteBtn', 'fab'];
+  var TIPS = { q18Launcher: 'BI Enterprise', v22WorkspaceBtn: 'Workspace', ultraDockBtn: 'Central', ultraPaletteBtn: 'Comandos (Ctrl+K)', fab: 'Ações rápidas' };
+  function ensureDock(){
+    var dock = $('qx50Dock');
+    if (!dock) { dock = document.createElement('div'); dock.id = 'qx50Dock'; document.body.appendChild(dock); }
+    var present = DOCK_ORDER.map($).filter(Boolean);
+    var inOrder = present.every(function(el, i){ return dock.children[i] === el; });
+    if (inOrder) return;
+    present.forEach(function(el){
+      if (!el.getAttribute('data-qx50-tip')) el.setAttribute('data-qx50-tip', TIPS[el.id]);
+      dock.appendChild(el);
+    });
+  }
+
+  function isShown(el){
+    return !!el && el.getClientRects().length > 0 && getComputedStyle(el).display !== 'none';
+  }
+  function activePage(){
+    var cp = '';
+    try { cp = (typeof currentPage !== 'undefined' && currentPage) || ''; } catch(e){}
+    // o roteador de Perdas/Análise (v42) não atualiza currentPage: confere a página visível
+    if (cp === 'Dashboard' && !isShown($('pageDashboard'))) return 'Outra';
+    return cp;
+  }
+
+  /* ── Estado do body (logado / admin / página) ──────────────────── */
+  var lastSig = '';
+  function tick(){
+    var logged = isLogged();
+    var admin = logged && isAdmin();
+    var page = activePage();
+    var sig = logged + '|' + admin + '|' + page;
+    if (sig === lastSig) return;
+    lastSig = sig;
+    document.body.classList.toggle('qx50-auth', logged);
+    document.body.classList.toggle('qx50-admin', admin);
+    document.body.classList.toggle('qx50-dash', logged && (page === 'Dashboard' || page === ''));
+    if (logged) ensureDock();
+    if (admin) afterAdminLogin();
+  }
+
+  function boot(){
+    tick();
+    setInterval(function(){ try { tick(); } catch(e){} }, 700);
+    // botões criados tardiamente por outros módulos
+    var n = 0, iv = setInterval(function(){ try { if (isLogged()) ensureDock(); } catch(e){} if (++n > 20) clearInterval(iv); }, 1500);
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
+})();
+</script>

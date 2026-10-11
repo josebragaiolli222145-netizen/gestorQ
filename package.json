@@ -1,0 +1,19 @@
+{
+  "name": "gestorq",
+  "private": true,
+  "description": "GestorQ — sistema de gestão de qualidade e perdas (arquivo único GestorQ.html)",
+  "scripts": {
+    "test": "node tests/smoke.js"
+  },
+  "devDependencies": {
+    "@zxing/library": "0.19.1",
+    "chart.js": "4.4.1",
+    "firebase": "9.23.0",
+    "html2canvas": "1.4.1",
+    "jspdf": "2.5.1",
+    "jszip": "3.10.1",
+    "playwright": "1.56.1",
+    "qrcodejs": "1.0.0",
+    "xlsx": "0.18.5"
+  }
+}
