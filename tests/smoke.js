@@ -17,7 +17,7 @@ const CDN_MAP = [
   [/qrcode/, 'qrcodejs/qrcode.min.js'],
   [/firebase.*\/(firebase-[a-z-]+compat\.js)/, null],
 ];
-const PAGES = ['Dashboard', 'Auditoria', 'Temperatura', 'Vencidos', 'Recebimento', 'Analise', 'GQLAnalise', 'Aprovacao', 'Diretor', 'Config'];
+const PAGES = ['Dashboard', 'Auditoria', 'Temperatura', 'Vencidos', 'Recebimento', 'Indicadores', 'Analise', 'GQLAnalise', 'Aprovacao', 'Diretor', 'PlanoAcao', 'Config'];
 
 (async () => {
   const browser = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
@@ -46,6 +46,11 @@ const PAGES = ['Dashboard', 'Auditoria', 'Temperatura', 'Vencidos', 'Recebimento
   await page.waitForTimeout(4000);
   const dashVisible = await page.evaluate(() => { const p = document.getElementById('pageDashboard'); return !!p && p.getClientRects().length > 0; });
 
+  await page.evaluate(() => { const b = document.querySelector('.qx50-ov [data-a=ok]'); if (b) b.click(); });
+  await page.waitForTimeout(1500);
+  const painelHoje = await page.evaluate(() => !!document.querySelector('#gq51Hoje .gq-kpis'));
+  const gs1 = await page.evaluate(() => { const r = window.gq51ParseGS1 && window.gq51ParseGS1('(01)07891000100103(17)261231(10)L42'); return !!r && r.codigo === '7891000100103' && r.validade === '2026-12-31' && r.lote === 'L42'; });
+
   const results = [];
   for (const name of PAGES) {
     const r = await page.evaluate(n => { try { goPage(n, document.querySelector(`[onclick*="goPage('${n}'"]`)); return 'ok'; } catch (e) { return e.message; } }, name);
@@ -58,6 +63,8 @@ const PAGES = ['Dashboard', 'Auditoria', 'Temperatura', 'Vencidos', 'Recebimento
     ['modo padrão (não quirks)', mode === 'CSS1Compat'],
     ['sem texto solto na página', stray === 0],
     ['dashboard visível após login', dashVisible],
+    ['painel de hoje (v51) no dashboard', painelHoje],
+    ['leitura de código GS1', gs1],
     ['todas as páginas abrem', results.every(r => r.endsWith(': ok'))],
     ['nenhum erro de JavaScript', errors.length === 0],
   ];

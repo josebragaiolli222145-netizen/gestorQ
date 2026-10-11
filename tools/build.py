@@ -136,5 +136,28 @@ extra = open(__file__.replace('build.py', 'gestorq-v50.html'), encoding='utf-8')
 idx = html.rstrip().rfind('</body>')
 html = html[:idx] + extra.rstrip('\n') + '\n\n' + html[idx:]
 
+# 11) Marca única: relatórios impressos e manifesto diziam "Qualtrix"
+import re as _re
+_n = 0
+def _brand_line(m):
+    global _n
+    line = m.group(0)
+    if 'Qualtrix' in line:
+        _n += line.count('Qualtrix')
+        line = line.replace('Qualtrix Platform', 'GestorQ').replace('Qualtrix', 'GestorQ')
+    return line
+html = _re.sub(r'^.*(?:document\.write\(|rel="manifest"|<title>|<h[1-6][^>]*>|doc\.text\(|showNotification\(|alert\(|document\.title|\.textContent|\.innerHTML|ensureHero\(|title=").*$', _brand_line, html, flags=_re.M)
+html = html.replace("Qualtrix Platform", "GestorQ").replace("|| 'Qualtrix'", "|| 'GestorQ'")
+for _a in ['Gerado pelo Qualtrix', 'relatório do Qualtrix', 'Resumo Semanal Qualtrix', 'Qualtrix Alert', '*Auditoria Qualtrix*', 'Buscar no Qualtrix', 'Qualtrix Ultimate']:
+    html = html.replace(_a, _a.replace('Qualtrix', 'GestorQ'))
+print('marca:', _n, 'ocorrências em relatórios/manifesto')
+
+# 12) Camada v51 (melhorias da análise de mercado)
+v51_css = open(__file__.replace('build.py', 'gestorq-v51.html'), encoding='utf-8').read().rstrip('\n')
+v51_js = open(__file__.replace('build.py', 'gestorq-v51.js'), encoding='utf-8').read().rstrip('\n')
+assert '</script' not in v51_js
+idx = html.rstrip().rfind('</body>')
+html = html[:idx] + v51_css + '\n<script id="gestorq-v51">\n' + v51_js + '\n</script>\n\n' + html[idx:]
+
 open(dst, 'w', encoding='utf-8').write(html)
 print('ok:', N, '->', html.count('\n') + 1, 'linhas;', len(html.encode()) // 1024, 'KB')

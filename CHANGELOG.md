@@ -1,5 +1,53 @@
 # Changelog
 
+## v51: melhorias da análise de mercado
+
+Todas as mudanças ficam numa camada nova (`gestorq-v51`), separada do código antigo. Ela usa os mesmos dados do app (vencidos, plano de ação 5W2H, temperatura e perdas) e guarda o que é novo em chaves `gq51_*`.
+
+### Fase 1: impacto rápido
+- **Painel de hoje** no Dashboard, no lugar dos banners de texto:
+  - 4 indicadores que levam a uma ação: perdas do mês (em R$ e em % do faturamento, contra a meta), R$ vencendo em até 3 dias, pendências abertas e atrasadas, e temperaturas fora da faixa hoje;
+  - faixa **"R$ recuperados no mês"** com rebaixas, devoluções e doações.
+- **Barra do topo enxuta:** busca, tema e o menu do usuário (perfil, busca, tema, modo chão de loja, salvar, novidades, BI Enterprise, Central, Comandos, código de recuperação, diagnóstico, sair). Os botões duplicados (duas buscas e dois de tema) saíram.
+- **Marca única "GestorQ"** em telas, relatórios impressos, PDFs, mensagens e manifesto (antes aparecia "Qualtrix").
+- **Paleta unificada no tema escuro:** cartões brancos e textos escuros soltos passam a seguir as cores do tema.
+- **Agir antes de vencer** (página Vencidos):
+  - lista dos produtos que vencem em até 7 dias, com desconto sugerido (≤1 dia 50%, ≤3 dias 35%, ≤5 dias 25%, ≤7 dias 15%; dá para ajustar);
+  - etiqueta de rebaixa pronta para imprimir;
+  - registro do destino de cada produto: vendido, doado, devolvido ou descartado, com quantidade parcial;
+  - descarte e doação entram como perda (motivos "Vencido" e "Doação"); venda e devolução contam como R$ recuperado;
+  - produto vencido nunca recebe sugestão de venda.
+
+### Fase 2: diferenciação
+- **Página Indicadores** (nova no menu, grupo Gestão):
+  - **Perda x faturamento:** índice do mês contra a meta e contra a média do mercado por formato de loja (9ª Pesquisa Abrappe, 2025: vizinhança 3,30%, convencional 2,79%, hiper 2,11%, atacarejo 1,85%), mais o índice por setor e o histórico dos últimos meses;
+  - **Motivos (Pareto):** gráfico com % acumulado, classificação em lote ou um a um dos lançamentos importados sem motivo, e registro manual de perda;
+  - **Relatório para Compras:** produtos que vencem ou são descartados repetidamente, com sugestão de reduzir o pedido; exporta para Excel e imprime;
+  - **Pendências:** usa o mesmo cadastro do Plano de ação 5W2H, com responsável, prazo, prioridade, fotos de evidência "antes" e "depois" e alerta de atraso;
+  - **Destinos:** histórico e totais do que foi feito com cada produto; exporta para Excel.
+
+### Fase 3: escala
+- **Leitura de código GS1** (DataMatrix, GS1-128 e EAN) pela câmera, por leitor USB/Bluetooth ou digitando. Preenche código, validade e lote, e reaproveita o nome e o preço de produtos já conhecidos. Botão **Escanear** no centro da barra inferior do celular, em "Agir antes de vencer" e na tela de Vencidos vazia.
+- **Temperatura fora da faixa exige ação corretiva:**
+  - o app pede a ação, com sugestões prontas para tocar;
+  - salva a ação no registro;
+  - cria uma pendência de verificação.
+  - **Correção:** o campo de ação corretiva que já existia nunca era salvo.
+- **Minha lista de hoje** por função: retirar vencidos, rebaixar, registrar temperaturas, ações corretivas, pendências do usuário e, para a gestão, informar o faturamento e revisar Compras. Os itens podem ser marcados como feitos.
+- **Navegação agrupada** (Operação, Gestão e Sistema) no desktop. No celular, a barra inferior tem 5 itens (Início, Vencidos, Escanear, Perdas e Mais); o resto fica no menu "Mais" e no menu do usuário.
+- **Modo chão de loja:** botões e campos maiores e mais contraste.
+- **Integrações por planilha:**
+  - importação de faturamento (mês, setor e valor) e de leituras de sensores de temperatura;
+  - leituras fora da faixa geram uma pendência por equipamento e dia;
+  - backup JSON dos dados novos.
+- **Sincronização com o Firebase** (modo nuvem): destinos, motivos, faturamento e ajustes. As fotos ficam só no aparelho.
+
+### Layout
+- Removido o espaço vazio de cerca de 90px no topo de todas as páginas.
+- Barra lateral mais compacta e com rolagem.
+- Margem para a coluna de botões flutuantes.
+- No celular, só o botão "+" flutua.
+
 ## v50 — correções e melhorias
 
 ### Segurança
