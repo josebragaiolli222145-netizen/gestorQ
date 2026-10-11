@@ -136,6 +136,15 @@ extra = open(__file__.replace('build.py', 'gestorq-v50.html'), encoding='utf-8')
 idx = html.rstrip().rfind('</body>')
 html = html[:idx] + extra.rstrip('\n') + '\n\n' + html[idx:]
 
+# 10b) XSS antigo: Plano de ação (5W2H) e log de auditoria exibiam textos sem escape
+#      (as pendências da v51 e importações de sensores também aparecem ali).
+sub("+' '+a.what+'</div>'", "+' '+sanitize(a.what)+'</div>'")
+sub("'<div class=\"pa-meta\">👤 '+a.who+' · 📅 '+dtFmt+(a.where?' · 📍'+a.where:'')+(a.why?' · 💡'+a.why.substring(0,40):'')+'</div>'",
+    "'<div class=\"pa-meta\">👤 '+sanitize(a.who)+' · 📅 '+dtFmt+(a.where?' · 📍'+sanitize(a.where):'')+(a.why?' · 💡'+sanitize(String(a.why).substring(0,40)):'')+'</div>'")
+sub("🛠️ '+a.how.substring(0,80)", "🛠️ '+sanitize(String(a.how).substring(0,80))")
+sub("' + l.user + '</span><span>' + l.action + (l.detail ? ' — ' + l.detail.substring(0, 60) : '')",
+    "' + sanitize(l.user) + '</span><span>' + sanitize(l.action) + (l.detail ? ' — ' + sanitize(String(l.detail).substring(0, 60)) : '')")
+
 # 11) Marca única: relatórios impressos e manifesto diziam "Qualtrix"
 import re as _re
 _n = 0

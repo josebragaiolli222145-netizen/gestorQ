@@ -42,6 +42,14 @@ Todas as mudanças ficam numa camada nova (`gestorq-v51`), separada do código a
   - backup JSON dos dados novos.
 - **Sincronização com o Firebase** (modo nuvem): destinos, motivos, faturamento e ajustes. As fotos ficam só no aparelho.
 
+### Segurança (revisão da equipe)
+- **Plano de ação (5W2H) e log de auditoria:** passaram a escapar os textos. Antes, uma pendência com código HTML executava esse código na tela de quem a abrisse. O problema já existia e as pendências novas o tornariam mais exposto.
+- **Fotos de evidência:** só são aceitas imagens válidas.
+- **Meta, faixas de desconto e backup:** são validados.
+- **Dados vindos do Firebase:** passam pela mesma validação.
+- **Backup no modo nuvem:** a importação pede confirmação antes de enviar para a filial.
+- **Indicadores e valores em R$ de perdas:** só para gestão (admin, gerente, subgerente, supervisor, diretor) e prevenção de perdas. As demais funções veem só as próprias pendências.
+
 ### Layout
 - Removido o espaço vazio de cerca de 90px no topo de todas as páginas.
 - Barra lateral mais compacta e com rolagem.

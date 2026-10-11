@@ -24,6 +24,7 @@
     atacarejo:    { n: 'Atacarejo', v: 1.85 }
   };
   var GESTAO = /^(admin|administrador|gerente|subgerente|supervisor|diretor)$/i;
+  var FINANCEIRO = /^(admin|administrador|gerente|subgerente|supervisor|diretor|prevencao|prevenção)$/i; // vê perdas em R$ e Indicadores
   var MESES = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
 
   function $(id){ return document.getElementById(id); }
@@ -54,6 +55,7 @@
   function curUser(){ try { return window.currentUser || (typeof currentUser !== 'undefined' ? currentUser : null); } catch(e){ return null; } }
   function userName(){ var u = curUser(); return (u && (u.name || u.nome || u.username)) || '—'; }
   function isGestao(){ var u = curUser(); return !!u && GESTAO.test(String(u.role || '')); }
+  function veFinanceiro(){ var u = curUser(); return !!u && FINANCEIRO.test(String(u.role || '')); }
   function isAdmin(){ var u = curUser(); return !!u && /^(admin|administrador)$/i.test(String(u.role || '')); }
   function isShown(el){ return !!el && el.getClientRects().length > 0 && getComputedStyle(el).display !== 'none'; }
   function go(page){ try { window.goPage(page, document.querySelector('[onclick*="goPage(\'' + page + '\'"]')); } catch(e){} }
@@ -71,6 +73,8 @@
     chart: '<path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/>',
     check: '<path d="M20 6 9 17l-5-5"/>'
   };
+  var RE_IMG = /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+\/=]+$/;
+  function fotoOk(f){ return !!f && typeof f.img === 'string' && RE_IMG.test(f.img); }
   function ico(n){ return '<svg class="gq-ico" viewBox="0 0 24 24">' + (ICO[n] || '') + '</svg>'; }
 
   /* ════════════════════════════════════════════════════════════════
@@ -96,8 +100,10 @@
     }
     try { if (typeof window.renderPlanoAcao === 'function' && isShown($('pagePlanoAcao'))) window.renderPlanoAcao(); } catch(e){}
   }
+  function limpa(t, max){ return String(t == null ? '' : t).replace(/[<>]/g, '').slice(0, max || 300); }
   function novaAcao(o){
     var u = curUser();
+    ['what', 'why', 'where', 'who', 'how'].forEach(function(k){ if (o[k] != null) o[k] = limpa(o[k]); });
     var a = {
       id: 'ac_' + Date.now() + Math.floor(Math.random() * 1000),
       what: o.what, why: o.why || '', where: o.where || '', who: o.who || userName(), when: o.when || iso(),
@@ -138,8 +144,9 @@
   function cfg(){
     var c = load(K.cfg, {});
     if (!FORMATOS[c.formato]) c.formato = 'convencional';
-    if (!(num(c.meta) > 0)) c.meta = FORMATOS[c.formato].v;
+    c.meta = num(c.meta); if (!(c.meta > 0 && c.meta < 100)) c.meta = FORMATOS[c.formato].v;
     if (!Array.isArray(c.faixas) || c.faixas.length !== 4) c.faixas = [50, 35, 25, 15];
+    c.faixas = c.faixas.map(function(x){ return Math.max(0, Math.min(90, Math.round(num(x)))); });
     return c;
   }
   function sugestao(d){
@@ -175,7 +182,7 @@
         window.db.collection('filiais').doc(window.fbFilial).collection('gestorq_v51').doc(k).get().then(function(s){
           if (!s || !s.exists) return;
           var d = s.data() || {}; var lt = +localStorage.getItem(k + '__ts') || 0;
-          if (d.json && d.updatedAt > lt) { localStorage.setItem(k, d.json); localStorage.setItem(k + '__ts', String(d.updatedAt)); dirty = true; }
+          if (d.json && d.updatedAt > lt) { var obj = {}; try { obj[k] = JSON.parse(d.json); } catch(e){ return; } var ok = validarBackup(obj); if (ok[k] === undefined) return; localStorage.setItem(k, JSON.stringify(ok[k])); localStorage.setItem(k + '__ts', String(Math.min(+d.updatedAt || 0, Date.now()))); dirty = true; }
         }).catch(function(){});
       } catch(e){}
     });
@@ -319,8 +326,9 @@
     }
   }
   function syncIndVisibility(){
-    var ind = $('navGQ51Ind'), ref = $('navGQLAnalise'); if (!ind || !ref) return;
-    var hidden = ref.style.display === 'none';
+    var ind = $('navGQ51Ind'), ref = $('navGQLAnalise'); if (!ind) return;
+    var hidden = !veFinanceiro() || (ref && ref.style.display === 'none');
+    var side = $('gq51SideInd'); if (side) side.style.display = hidden ? 'none' : '';
     if (ind.__h !== hidden) { ind.style.display = hidden ? 'none' : ''; ind.__h = hidden; }
   }
   function ensurePage(){
@@ -372,13 +380,15 @@
         '<div style="font-size:.78rem;color:var(--gq-text-2)">' + new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' }) + '</div>' +
       '</div>' +
       '<div class="gq-kpis">' +
-        '<button class="gq-kpi ' + perdaCls + '" data-go="ind:indice"><div class="l">' + ico('money') + 'Perdas do mês</div><div class="v">' + brl(r.perdasMes) + '</div><div class="s">' + perdaSub + '</div></button>' +
+        (veFinanceiro()
+          ? '<button class="gq-kpi ' + perdaCls + '" data-go="ind:indice"><div class="l">' + ico('money') + 'Perdas do mês</div><div class="v">' + brl(r.perdasMes) + '</div><div class="s">' + perdaSub + '</div></button>'
+          : '<button class="gq-kpi" data-go="venc"><div class="l">' + ico('tag') + 'Vencendo em até 7 dias</div><div class="v">' + r.ate7.length + '</div><div class="s">produto(s) para acompanhar</div></button>') +
         '<button class="gq-kpi ' + vCls + '" data-go="venc"><div class="l">' + ico('clock') + 'Vencendo em até 3 dias</div><div class="v">' + brl(r.v3Val) + '</div><div class="s">' + r.ate3.length + ' produto(s)' + (r.vencidos.length ? ' · <b style="color:var(--gq-danger)">' + r.vencidos.length + ' vencido(s)</b>' : '') + '</div></button>' +
         '<button class="gq-kpi ' + pCls + '" data-go="ind:pendencias"><div class="l">' + ico('task') + 'Pendências abertas</div><div class="v">' + r.acoes.length + '</div><div class="s">' + (r.atrasadas.length ? '<b style="color:var(--gq-danger)">' + r.atrasadas.length + ' atrasada(s)</b>' : 'nenhuma atrasada') + '</div></button>' +
         '<button class="gq-kpi ' + tCls + '" data-go="temp"><div class="l">' + ico('temp') + 'Temperatura hoje</div><div class="v">' + r.crit.length + ' fora</div><div class="s">' + (r.temps.length ? r.temps.length + ' leitura(s)' + (r.semAcao.length ? ' · <b style="color:var(--gq-danger)">' + r.semAcao.length + ' sem ação</b>' : '') : 'nenhuma leitura hoje') + '</div></button>' +
       '</div>' +
-      '<div class="gq-strip">💚 <span>Este mês as rebaixas, devoluções e doações recuperaram <b>' + brl(r.salvos) + '</b> em ' + r.dest.length + ' destino(s) registrado(s).</span>' +
-        '<button class="gq-btn sm" data-go="venc" style="margin-left:auto">Agir agora</button></div>' +
+      (!veFinanceiro() ? '' : '<div class="gq-strip">💚 <span>Este mês as rebaixas, devoluções e doações recuperaram <b>' + brl(r.salvos) + '</b> em ' + r.dest.length + ' destino(s) registrado(s).</span>' +
+        '<button class="gq-btn sm" data-go="venc" style="margin-left:auto">Agir agora</button></div>') +
       '<div class="gq-section"><h3>' + ico('check') + 'Minha lista de hoje</h3><p class="gq-sub">Tarefas do dia para a sua função. Marque o que já foi feito.</p>' +
         '<div class="gq-list">' + renderLista(r) + '</div></div>';
   }
@@ -448,7 +458,7 @@
     if (!lista.length) { box.innerHTML = head + '<div class="gq-empty">Nenhum produto vence nos próximos 7 dias. 👍</div>'; return; }
     var rows = lista.slice(0, 40).map(function(x){
       var p = x.p, v = itemVal(p), s = sugestao(x.d), id = esc(p.id);
-      var reb = p.gq51Rebaixa ? ' <span class="gq-badge gq-b-ok">rebaixado ' + esc(p.gq51Rebaixa.pct) + '%</span>' : '';
+      var reb = p.gq51Rebaixa ? ' <span class="gq-badge gq-b-ok">rebaixado ' + Math.round(num(p.gq51Rebaixa.pct)) + '%</span>' : '';
       var sug = s.vencido ? '<b style="color:var(--gq-danger)">Retirar da venda</b>' :
         '<b>' + s.pct + '% off</b><div style="font-size:.74rem;color:var(--gq-text-2)">' + brl(v.u) + ' → <b style="color:var(--gq-ok)">' + brl(v.u * (1 - s.pct / 100)) + '</b></div>';
       var acts = (s.vencido ? '' : '<button class="gq-btn sm" data-a="etiqueta" data-id="' + id + '">🏷️ Etiqueta</button><button class="gq-btn sm ok" data-a="vendido" data-id="' + id + '">Vendido</button><button class="gq-btn sm" data-a="doado" data-id="' + id + '">Doado</button>') +
@@ -475,7 +485,7 @@
   var DEST_TXT = { vendido: 'Vendido com rebaixa', doado: 'Doado', devolvido: 'Devolvido / trocado com o fornecedor', descartado: 'Descartado' };
   function abrirDestino(p, destino){
     var d = diasAte(p.validade), v = itemVal(p), s = sugestao(d) || { pct: 0 };
-    var pctIni = p.gq51Rebaixa ? p.gq51Rebaixa.pct : s.pct;
+    var pctIni = Math.max(0, Math.min(90, Math.round(num(p.gq51Rebaixa ? p.gq51Rebaixa.pct : s.pct))));
     var ov = modal('<h3>' + esc(DEST_TXT[destino]) + '</h3><p><b>' + esc(p.nome || p.produto) + '</b> · ' + v.q + ' un. · ' + brl(v.total) + '</p>' +
       '<div class="gq-form"><label>Quantidade<input id="gq51DQ" type="number" min="1" max="' + v.q + '" value="' + v.q + '"></label>' +
       (destino === 'vendido' ? '<label>Desconto aplicado (%)<input id="gq51DP" type="number" min="0" max="90" value="' + pctIni + '"></label>' : '') + '</div>' +
@@ -510,7 +520,7 @@
   }
   function imprimirEtiqueta(p){
     var d = diasAte(p.validade), s = sugestao(d) || { pct: 15 }, v = itemVal(p);
-    var pct = p.gq51Rebaixa ? p.gq51Rebaixa.pct : s.pct, novo = v.u * (1 - pct / 100);
+    var pct = Math.max(0, Math.min(90, Math.round(num(p.gq51Rebaixa ? p.gq51Rebaixa.pct : s.pct)))), novo = v.u * (1 - pct / 100);
     p.gq51Rebaixa = { pct: pct, em: new Date().toISOString() }; persistVenc();
     var w = window.open('', '_blank', 'width=420,height=360');
     if (!w) return notify('Permita pop-ups para imprimir a etiqueta.', 'warning');
@@ -713,6 +723,7 @@
     var pg = $('pageIndicadores'); if (!pg) return;
     if (!pg.__gq51) { pg.__gq51 = true; pg.addEventListener('click', onIndClick); pg.addEventListener('change', onIndChange); }
     if (!ind.mes) ind.mes = mesAtual();
+    if (!veFinanceiro()) ind.tab = 'pendencias'; // demais funções: só as pendências
     if (ind.chart) { try { ind.chart.destroy(); } catch(e){} ind.chart = null; }
     var body = '';
     try {
@@ -721,7 +732,7 @@
     } catch(e){ console.error('[v51 indicadores]', e); body = '<div class="gq-empty">Não foi possível montar esta aba.</div>'; }
     pg.innerHTML = '<div style="margin:4px 0 12px"><h2 style="margin:0;font-size:1.35rem;font-weight:800;color:var(--gq-text)">Indicadores</h2>' +
       '<p class="gq-sub" style="margin:2px 0 0;color:var(--gq-text-2);font-size:.82rem">Índice de perdas, motivos, compras, pendências e destinos dos produtos.</p></div>' +
-      '<div class="gq-tabs">' + TABS.map(function(t){ return '<button data-tab="' + t[0] + '" class="' + (ind.tab === t[0] ? 'on' : '') + '">' + t[1] + '</button>'; }).join('') + '</div>' + body;
+      '<div class="gq-tabs">' + TABS.filter(function(t){ return veFinanceiro() || t[0] === 'pendencias'; }).map(function(t){ return '<button data-tab="' + t[0] + '" class="' + (ind.tab === t[0] ? 'on' : '') + '">' + t[1] + '</button>'; }).join('') + '</div>' + body;
     if (ind.tab === 'motivos') desenharPareto();
   }
 
@@ -770,7 +781,7 @@
   }
   function tabMotivos(){
     var meses = {}; perdasRows().forEach(function(r){ meses[r.mes] = 1; }); meses[mesAtual()] = 1;
-    var opts = '<option value="todos"' + (ind.mes === 'todos' ? ' selected' : '') + '>Todo o período</option>' + Object.keys(meses).sort().reverse().map(function(m){ return '<option value="' + m + '"' + (m === ind.mes ? ' selected' : '') + '>' + esc(mesNome(m)) + '</option>'; }).join('');
+    var opts = '<option value="todos"' + (ind.mes === 'todos' ? ' selected' : '') + '>Todo o período</option>' + Object.keys(meses).sort().reverse().map(function(m){ return '<option value="' + esc(m) + '"' + (m === ind.mes ? ' selected' : '') + '>' + esc(mesNome(m)) + '</option>'; }).join('');
     var pd = paretoData();
     var semMotivo = rowsPeriodo().filter(function(r){ return r.motivo === 'Não informado'; });
     var setores = {}; semMotivo.forEach(function(r){ setores[r.departamento] = 1; });
@@ -879,7 +890,7 @@
           '<div class="ic">' + ico(a.status === 'concluida' ? 'check' : 'task') + '</div><div class="tx"><div class="t">' + esc(a.what) + '</div>' +
           '<div class="d">' + esc(pr[a.prioridade] || a.prioridade || '') + ' · ' + esc(a.who || '—') + ' · prazo ' + brDate(a.when) + (atras ? ' · <b style="color:var(--gq-danger)">ATRASADA</b>' : '') + (a.origem && a.origem !== 'gestorq' ? ' · origem: ' + esc(a.origem) : '') + '</div>' +
           (a.why ? '<div class="d">' + esc(a.why) + '</div>' : '') +
-          (fs.length ? '<div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">' + fs.map(function(f, i){ return '<img class="gq-thumb" src="' + f.img + '" alt="' + esc(f.tipo) + '" title="' + esc(f.tipo + ' — ' + brDate(f.data)) + '" data-foto="' + esc(a.id) + ':' + i + '">'; }).join('') + '</div>' : '') +
+          (fs.length ? '<div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">' + fs.map(function(f, i){ if (!fotoOk(f)) return ''; return '<img class="gq-thumb" src="' + esc(f.img) + '" alt="' + esc(f.tipo) + '" title="' + esc(f.tipo + ' — ' + brDate(f.data)) + '" data-foto="' + esc(a.id) + ':' + i + '">'; }).join('') + '</div>' : '') +
           '</div><div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">' +
           (a.status !== 'concluida' ? '<button class="gq-btn sm" data-a="foto" data-tipo="antes" data-id="' + esc(a.id) + '">📷 Antes</button><button class="gq-btn sm" data-a="foto" data-tipo="depois" data-id="' + esc(a.id) + '">📷 Depois</button><button class="gq-btn sm ok" data-a="concluir" data-id="' + esc(a.id) + '">Concluir</button>' : '<span class="gq-badge gq-b-ok">concluída</span>') +
           '</div></div>';
@@ -915,7 +926,7 @@
   /* ── Destinos ───────────────────────────────────────────────────── */
   function tabDestinos(){
     var arr = load(K.destinos, []).slice().reverse(), g = {};
-    arr.forEach(function(d){ var o = g[d.destino] || (g[d.destino] = { n: 0, total: 0, rec: 0 }); o.n++; o.total += num(d.total); o.rec += num(d.recuperado); });
+    arr.forEach(function(d){ if (!d || !DEST_TXT.hasOwnProperty(d.destino)) return; var o = g[d.destino] || (g[d.destino] = { n: 0, total: 0, rec: 0 }); o.n++; o.total += num(d.total); o.rec += num(d.recuperado); });
     return '<div class="gq-section"><h3>' + ico('tag') + 'Destino dos produtos</h3><p class="gq-sub">Histórico do que foi feito com produtos próximos do vencimento.</p>' +
       '<div class="gq-kpis">' + ['vendido', 'devolvido', 'doado', 'descartado'].map(function(k){ var o = g[k] || { n: 0, total: 0, rec: 0 }; return '<div class="gq-kpi ' + (k === 'descartado' ? 'danger' : k === 'doado' ? 'warn' : 'ok') + '" style="cursor:default"><div class="l">' + esc(DEST_TXT[k]) + '</div><div class="v">' + o.n + '</div><div class="s">' + brl(o.total) + (o.rec ? ' · recuperado ' + brl(o.rec) : '') + '</div></div>'; }).join('') + '</div>' +
       '<div style="margin-bottom:10px"><button class="gq-btn" data-a="destXlsx">📊 Exportar Excel</button></div>' +
@@ -1007,12 +1018,27 @@
     dirty = true;
   }
 
+  /* Backup: aceita só o formato esperado de cada chave (evita injeção de HTML/valores estranhos) */
+  function validarBackup(d){
+    var out = {}, isObj = function(x){ return x && typeof x === 'object' && !Array.isArray(x); };
+    var txt = function(x, m){ return String(x == null ? '' : x).replace(/[<>"]/g, '').slice(0, m || 200); };
+    var data = function(x){ return /^\d{4}-\d{2}-\d{2}$/.test(x) ? x : ''; };
+    if (Array.isArray(d[K.destinos])) out[K.destinos] = d[K.destinos].filter(function(x){ return isObj(x) && DEST_TXT.hasOwnProperty(x.destino) && data(x.data); }).map(function(x){
+      return { id: txt(x.id, 60), ts: txt(x.ts, 40), data: data(x.data), produto: txt(x.produto), codigo: txt(x.codigo, 40), setor: txt(x.setor, 80), validade: data(x.validade),
+        qtd: num(x.qtd), valorUnit: num(x.valorUnit), total: num(x.total), destino: x.destino, pct: Math.max(0, Math.min(90, num(x.pct))), recuperado: num(x.recuperado), desconto: num(x.desconto), por: txt(x.por, 80) }; });
+    if (isObj(d[K.motivos])) { var m = {}; Object.keys(d[K.motivos]).forEach(function(k){ if (MOTIVOS.indexOf(d[K.motivos][k]) >= 0) m[txt(k, 400)] = d[K.motivos][k]; }); out[K.motivos] = m; }
+    if (isObj(d[K.fat])) { var f = {}; Object.keys(d[K.fat]).forEach(function(k){ var v = d[K.fat][k]; if (!/^\d{4}-\d{2}$/.test(k) || !isObj(v)) return; var st = {}; if (isObj(v.setores)) Object.keys(v.setores).forEach(function(s2){ st[txt(s2, 80)] = num(v.setores[s2]); }); f[k] = { total: num(v.total), setores: st }; }); out[K.fat] = f; }
+    if (isObj(d[K.cfg])) out[K.cfg] = { formato: FORMATOS[d[K.cfg].formato] ? d[K.cfg].formato : 'convencional', meta: num(d[K.cfg].meta), faixas: Array.isArray(d[K.cfg].faixas) ? d[K.cfg].faixas.slice(0, 4).map(num) : undefined };
+    if (isObj(d[K.fotos])) { var fo = {}; Object.keys(d[K.fotos]).forEach(function(k){ var l = d[K.fotos][k]; if (Array.isArray(l)) { var ok = l.filter(fotoOk).map(function(x){ return { tipo: x.tipo === 'depois' ? 'depois' : 'antes', data: data(x.data), por: txt(x.por, 80), img: x.img }; }); if (ok.length) fo[txt(k, 60)] = ok; } }); out[K.fotos] = fo; }
+    return out;
+  }
+
   /* ── Eventos da página Indicadores ─────────────────────────────── */
   function onIndClick(e){
     var t = e.target.closest('[data-tab]'); if (t) { ind.tab = t.getAttribute('data-tab'); if (ind.tab === 'indice' && ind.mes === 'todos') ind.mes = mesAtual(); return renderInd(); }
     var p = e.target.closest('[data-pend]'); if (p) { ind.pendFiltro = p.getAttribute('data-pend'); return renderInd(); }
     var f = e.target.closest('[data-foto]');
-    if (f) { var parts = f.getAttribute('data-foto').split(':'), ft = (load(K.fotos, {})[parts[0]] || [])[+parts[1]]; if (ft) modal('<h3>Evidência — ' + esc(ft.tipo) + '</h3><p>' + brDate(ft.data) + ' · ' + esc(ft.por || '') + '</p><img src="' + ft.img + '" style="width:100%;border-radius:12px">'); return; }
+    if (f) { var parts = f.getAttribute('data-foto').split(':'), ft = (load(K.fotos, {})[parts[0]] || [])[+parts[1]]; if (fotoOk(ft)) modal('<h3>Evidência — ' + esc(ft.tipo) + '</h3><p>' + esc(brDate(ft.data)) + ' · ' + esc(ft.por || '') + '</p><img src="' + esc(ft.img) + '" style="width:100%;border-radius:12px">'); return; }
     var b = e.target.closest('[data-a]'); if (!b) return;
     var a = b.getAttribute('data-a');
     if (a === 'salvarFat') {
@@ -1081,8 +1107,12 @@
       fr.onload = function(){
         try {
           var d = JSON.parse(fr.result); if (!d || d.versao !== 'gestorq-v51') throw new Error('arquivo não é um backup do GestorQ v51');
-          Object.keys(K).forEach(function(k){ if (d[K[k]] != null) save(K[k], d[K[k]]); });
-          notify('✅ Backup importado.', 'success'); dirty = true; renderInd();
+          var limpo = validarBackup(d);
+          var aplicar = function(){ Object.keys(limpo).forEach(function(k){ save(k, limpo[k]); }); notify('✅ Backup importado.', 'success'); dirty = true; renderInd(); };
+          if (cloudOk()) {
+            var ov = modal('<h3>Importar backup?</h3><p>Você está no modo nuvem: destinos, motivos, faturamento e ajustes importados serão enviados para todas as lojas da filial.</p><div class="row"><button class="gq-btn" data-x="c">Cancelar</button><button class="gq-btn pri" data-x="ok">Importar</button></div>');
+            ov.addEventListener('click', function(ev){ var x = ev.target.getAttribute && ev.target.getAttribute('data-x'); if (x === 'c') ov.close(); if (x === 'ok') { ov.close(); aplicar(); } });
+          } else aplicar();
         } catch(err){ notify('❌ ' + err.message, 'danger'); }
       };
       fr.readAsText(el.files[0]);
