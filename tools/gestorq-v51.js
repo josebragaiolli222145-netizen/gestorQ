@@ -1141,6 +1141,13 @@
       } catch(e){ console.error('[v51 render ' + k + ']', e); }
     });
     if (refresh) { dirty = false; lastRender = now; }
+    // Temperatura abria sem nenhuma aba de conteúdo: abre a de registro livre
+    var pt = $('pageTemperatura'), tShown = isShown(pt);
+    if (tShown && !vis.t && typeof window.setTempTab === 'function') {
+      var abas = ['tempTabAfericao', 'tempTabConfigurar', 'tempTabRegistro', 'tempTabHACCP', 'tempTabHistorico'];
+      if (!abas.some(function(id){ return isShown($(id)); }) && $('tempTabRegistro')) { try { window.setTempTab('registro', $('ttRegistro')); } catch(e){} }
+    }
+    vis.t = tShown;
   }
   function wrapRenderVencidos(){
     var o = window.renderVencidos; if (typeof o !== 'function' || o.__gq51) return;

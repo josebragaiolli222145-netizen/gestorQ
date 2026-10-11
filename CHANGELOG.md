@@ -50,6 +50,12 @@ Todas as mudanças ficam numa camada nova (`gestorq-v51`), separada do código a
 - **Backup no modo nuvem:** a importação pede confirmação antes de enviar para a filial.
 - **Indicadores e valores em R$ de perdas:** só para gestão (admin, gerente, subgerente, supervisor, diretor) e prevenção de perdas. As demais funções veem só as próprias pendências.
 
+### Correções apontadas pelo QA
+- **Tema claro:** os textos novos ficavam quase brancos sobre fundo branco. O corretor de contraste antigo deixou de mexer nos componentes novos.
+- **Sair:** o botão deixava a tela em branco, porque o formulário de login não voltava. O problema já existia.
+- **Aviso de senha padrão:** saiu do topo, onde tampava as abas de Temperatura, e foi para o canto inferior. Também não aparece mais na tela de login.
+- **Temperatura:** a página abria sem nenhuma aba de conteúdo. Agora abre direto no registro.
+
 ### Layout
 - Removido o espaço vazio de cerca de 90px no topo de todas as páginas.
 - Barra lateral mais compacta e com rolagem.

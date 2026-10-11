@@ -145,6 +145,23 @@ sub("🛠️ '+a.how.substring(0,80)", "🛠️ '+sanitize(String(a.how).substri
 sub("' + l.user + '</span><span>' + l.action + (l.detail ? ' — ' + l.detail.substring(0, 60) : '')",
     "' + sanitize(l.user) + '</span><span>' + sanitize(l.action) + (l.detail ? ' — ' + sanitize(String(l.detail).substring(0, 60)) : '')")
 
+# 10c) Corretor de contraste antigo grava cor inline e não desfaz ao trocar de tema:
+#      deixa de mexer nos componentes v51 (que já têm cores próprias para os 2 temas).
+sub("    if(el.closest('#qxGlobalContrastToggle')) return true;",
+    "    if(el.closest('#qxGlobalContrastToggle')) return true;\n    if(el.closest('#gq51Hoje,#gq51Agir,#pageIndicadores,.gq51-navlabel,.gq-ov,#gq51UserMenu,.qx50-ov,#qx50PwdBanner')) return true;")
+
+# 10d) Sair deixava a tela em branco: o login não voltava (authWrap ficava com
+#      display:none e o body com a classe main-app-active).
+sub("""                document.getElementById('authWrap').classList.remove('gone');
+                document.getElementById('mainScroll').style.display = 'none';""",
+    """                document.getElementById('authWrap').classList.remove('gone');
+                document.getElementById('authWrap').style.display = '';
+                document.getElementById('authWrap').removeAttribute('aria-hidden');
+                document.body.classList.remove('main-app-active');
+                try { window.currentUser = null; } catch(e) {}
+                try { document.getElementById('pwaHeader').style.display = ''; document.getElementById('pwaNav').style.display = ''; } catch(e) {}
+                document.getElementById('mainScroll').style.display = 'none';""")
+
 # 11) Marca única: relatórios impressos e manifesto diziam "Qualtrix"
 import re as _re
 _n = 0

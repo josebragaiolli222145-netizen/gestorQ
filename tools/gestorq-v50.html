@@ -25,7 +25,8 @@ body:not(.qx50-auth) #v22WorkspaceBtn,
 body:not(.qx50-auth) #qx-fab-diag,
 body:not(.qx50-auth) #qxQuickActions,
 body:not(.qx50-auth) #qxScrollTop,
-body:not(.qx50-auth) #qx50Dock { display:none !important; }
+body:not(.qx50-auth) #qx50Dock,
+body:not(.qx50-auth) #qx50PwdBanner { display:none !important; }
 
 /* Botão de diagnóstico só para administradores */
 body:not(.qx50-admin) #qx-fab-diag { display:none !important; }
@@ -111,10 +112,12 @@ body.qx50-auth #qxQuickActions { right: 84px !important; bottom: calc(16px + env
 .qx50-pri { background: linear-gradient(135deg,#4f46e5,#2563eb); color: #fff; }
 .qx50-sec { background: #1e293b; color: #cbd5e1; }
 .qx50-err { color: #fca5a5; font-size: .8rem; min-height: 1.1em; margin-top: 8px; }
-#qx50PwdBanner { position: fixed; left: 50%; transform: translateX(-50%); top: 66px; z-index: 9000; max-width: calc(100% - 32px);
+#qx50PwdBanner { position: fixed; left: 16px; bottom: 16px; z-index: 9000; max-width: min(520px, calc(100% - 100px));
   background: #451a03; color: #fde68a; border: 1px solid #b45309; border-radius: 12px; padding: 10px 14px;
   font: 600 .84rem/1.35 Inter, system-ui, sans-serif; display: flex; gap: 10px; align-items: center; box-shadow: 0 10px 30px rgba(0,0,0,.4); }
-#qx50PwdBanner button { border: 0; border-radius: 8px; padding: 6px 10px; font-weight: 700; cursor: pointer; background: #f59e0b; color: #1c1917; white-space: nowrap; }
+#qx50PwdBanner button { border: 0; border-radius: 8px; padding: 6px 10px; font-weight: 700; cursor: pointer; background: #f59e0b; color: #1c1917; flex: 0 0 auto; }
+@media (min-width: 1024px) { #qx50PwdBanner { left: 216px; } }
+@media (max-width: 1023.98px) { #qx50PwdBanner { left: 12px; bottom: calc(var(--nav-h, 60px) + env(safe-area-inset-bottom, 0px) + 12px); max-width: calc(100% - 88px); font-size: .78rem; } }
 #qx50PwdBanner button.x { background: transparent; color: #fde68a; padding: 6px; }
 </style>
 
