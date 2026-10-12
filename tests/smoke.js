@@ -17,7 +17,7 @@ const CDN_MAP = [
   [/qrcode/, 'qrcodejs/qrcode.min.js'],
   [/firebase.*\/(firebase-[a-z-]+compat\.js)/, null],
 ];
-const PAGES = ['Dashboard', 'Auditoria', 'Temperatura', 'Vencidos', 'Recebimento', 'Indicadores', 'Analise', 'GQLAnalise', 'Aprovacao', 'Diretor', 'PlanoAcao', 'Config'];
+const PAGES = ['Dashboard', 'Auditoria', 'Temperatura', 'Vencidos', 'Recebimento', 'Indicadores', 'PerdaVenda', 'Analise', 'GQLAnalise', 'Aprovacao', 'Diretor', 'PlanoAcao', 'Config'];
 
 (async () => {
   const browser = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});

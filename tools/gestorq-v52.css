@@ -1,0 +1,32 @@
+/* ── GestorQ v52 — Perda x Venda ─────────────────────────────────── */
+#pagePerdaVenda { background: var(--gq-bg) !important; color: var(--gq-text) !important; border-radius: 16px; padding: 14px !important; min-height: 70vh; }
+#pagePerdaVenda h2 { color: var(--gq-text) !important; }
+.gq52-kpis { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-bottom: 14px; }
+.gq52-q { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 999px; font: 800 .68rem/1 Inter, system-ui, sans-serif; white-space: nowrap; }
+.gq52-qA { background: rgba(239,68,68,.16); color: #f87171; }
+.gq52-qB { background: rgba(245,158,11,.18); color: #fbbf24; }
+.gq52-qC { background: rgba(16,185,129,.16); color: #34d399; }
+.gq52-qD { background: rgba(148,163,184,.16); color: var(--gq-text-2); }
+html:not([data-theme="dark"]) .gq52-qA { color: #b91c1c; } html:not([data-theme="dark"]) .gq52-qB { color: #92400e; } html:not([data-theme="dark"]) .gq52-qC { color: #047857; }
+.gq52-delta { font-size: .72rem; font-weight: 800; margin-left: 6px; }
+.gq52-up { color: var(--gq-danger); } .gq52-down { color: var(--gq-ok); }
+.gq52-chart { position: relative; height: 340px; }
+.gq52-chart.sm { height: 260px; }
+.gq52-quad { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-top: 10px; }
+.gq52-quad div { border: 1px solid var(--gq-border); border-radius: 12px; padding: 8px 10px; font-size: .74rem; color: var(--gq-text-2); background: var(--gq-surface-2); }
+.gq52-quad b { display: block; font-size: .8rem; color: var(--gq-text); margin-bottom: 2px; }
+.gq52-warn { color: var(--gq-warn); font-weight: 800; }
+.gq52-issues { display: flex; flex-direction: column; gap: 8px; margin: 10px 0; }
+.gq52-issue { display: flex; gap: 10px; align-items: flex-start; border: 1px solid var(--gq-border); border-radius: 12px; padding: 10px 12px; background: var(--gq-surface-2); font-size: .82rem; color: var(--gq-text); }
+.gq52-issue input[type=checkbox] { -webkit-appearance: checkbox !important; appearance: auto !important; width: 18px !important; height: 18px !important; min-height: 0 !important; flex: 0 0 18px; margin-top: 2px !important; padding: 0 !important; }
+.gq52-issue small { display: block; color: var(--gq-text-2); margin-top: 2px; }
+.gq52-modal { max-width: 640px !important; }
+.gq52-tbl { min-width: 1060px; }
+.gq52-tbl th { white-space: normal !important; line-height: 1.2; vertical-align: bottom; }
+.gq52-tbl td.prod { min-width: 200px; }
+.gq52-sug { font-size: .74rem; color: var(--gq-text-2); min-width: 260px; max-width: 340px; }
+@media (max-width: 900px) {
+  .gq52-kpis { grid-template-columns: 1fr 1fr; }
+  .gq52-quad { grid-template-columns: 1fr 1fr; }
+  .gq52-chart { height: 300px; }
+}

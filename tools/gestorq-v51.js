@@ -850,7 +850,8 @@
       '<button class="gq-btn" data-a="compXlsx">📊 Exportar Excel</button><button class="gq-btn" data-a="compPrint">🖨️ Imprimir</button></div>' +
       (lista.length ? '<div class="gq-tbl-wrap" style="margin-top:12px"><table class="gq-tbl"><thead><tr><th>Produto</th><th>Setor</th><th class="n">Ocorrências</th><th class="n">Qtd</th><th class="n">R$ perdido</th><th>Última</th><th>Sugestão</th></tr></thead><tbody>' +
         lista.map(function(o){ return '<tr><td><b>' + esc(o.produto) + '</b>' + (o.codigo ? '<div style="font-size:.72rem;color:var(--gq-text-2)">' + esc(o.codigo) + '</div>' : '') + '</td><td>' + esc(o.setor || '—') + '</td><td class="n">' + o.ocorr + '</td><td class="n">' + o.qtd.toLocaleString('pt-BR') + '</td><td class="n">' + brl(o.perdido) + '</td><td>' + brDate(o.ultima) + '</td><td>' + (o.ocorr >= 3 ? '🔴 ' : o.ocorr === 2 ? '🟠 ' : '') + esc(o.sug) + '</td></tr>'; }).join('') +
-        '</tbody></table></div>' : '<div class="gq-empty" style="margin-top:12px">Nada no período. O relatório se alimenta dos destinos registrados em Vencidos e das perdas com motivo "Vencido".</div>') + '</div>';
+        '</tbody></table></div>' : '<div class="gq-empty" style="margin-top:12px">Nada no período. O relatório se alimenta dos destinos registrados em Vencidos e das perdas com motivo "Vencido".</div>') + '</div>' +
+      (window.GQ52 && typeof window.GQ52.comprasHtml === 'function' ? window.GQ52.comprasHtml(ind.compDias) : '');
   }
   function exportarCompras(){
     if (typeof window.XLSX === 'undefined') return notify('Biblioteca de Excel não carregada.', 'warning');
@@ -1153,6 +1154,9 @@
     var o = window.renderVencidos; if (typeof o !== 'function' || o.__gq51) return;
     var w = function(){ var r = o.apply(this, arguments); dirty = true; return r; }; w.__gq51 = true; window.renderVencidos = w;
   }
+  // API mínima para a camada v52 (Perda x Venda)
+  window.GQ51 = { novaAcao: novaAcao, getAcoes: getAcoes, save: save, load: load, veFinanceiro: veFinanceiro, modal: modal, MOTIVOS: MOTIVOS.slice(), refresh: function(){ dirty = true; } };
+
   function boot(){
     try { if (localStorage.getItem(K.loja) === '1') document.body.classList.add('gq51-loja'); } catch(e){}
     try { brandObserve(); } catch(e){ console.warn('[v51 marca]', e); }

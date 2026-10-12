@@ -148,7 +148,7 @@ sub("' + l.user + '</span><span>' + l.action + (l.detail ? ' — ' + l.detail.su
 # 10c) Corretor de contraste antigo grava cor inline e não desfaz ao trocar de tema:
 #      deixa de mexer nos componentes v51 (que já têm cores próprias para os 2 temas).
 sub("    if(el.closest('#qxGlobalContrastToggle')) return true;",
-    "    if(el.closest('#qxGlobalContrastToggle')) return true;\n    if(el.closest('#gq51Hoje,#gq51Agir,#pageIndicadores,.gq51-navlabel,.gq-ov,#gq51UserMenu,.qx50-ov,#qx50PwdBanner')) return true;")
+    "    if(el.closest('#qxGlobalContrastToggle')) return true;\n    if(el.closest('#gq51Hoje,#gq51Agir,#pageIndicadores,.gq51-navlabel,.gq-ov,#gq51UserMenu,.qx50-ov,#qx50PwdBanner,#pagePerdaVenda')) return true;")
 
 # 10d) Sair deixava a tela em branco: o login não voltava (authWrap ficava com
 #      display:none e o body com a classe main-app-active).
@@ -161,6 +161,12 @@ sub("""                document.getElementById('authWrap').classList.remove('gon
                 try { window.currentUser = null; } catch(e) {}
                 try { document.getElementById('pwaHeader').style.display = ''; document.getElementById('pwaNav').style.display = ''; } catch(e) {}
                 document.getElementById('mainScroll').style.display = 'none';""")
+
+# 10e) Painel de Perdas (v42) junta cópias de vários módulos antigos e só
+#      deduplicava quando o nome do setor era idêntico: "Hortifrutigranjeiro" x
+#      "FLV" (ou "Açougue" x "AÇOUGUE") viravam lançamentos em dobro.
+sub("var sig = [r.data,r.codigo,r.produto,r.departamento,r.motivo,r.quantidade,r.valor].join('|');",
+    "var sig = [r.data,String(r.codigo||'').replace(/^0+(?=\\d)/,''),String(r.produto||'').trim().toUpperCase(),Number(r.quantidade).toFixed(3),Number(r.valor).toFixed(2)].join('|');")
 
 # 11) Marca única: relatórios impressos e manifesto diziam "Qualtrix"
 import re as _re
@@ -184,6 +190,13 @@ v51_js = open(__file__.replace('build.py', 'gestorq-v51.js'), encoding='utf-8').
 assert '</script' not in v51_js
 idx = html.rstrip().rfind('</body>')
 html = html[:idx] + v51_css + '\n<script id="gestorq-v51">\n' + v51_js + '\n</script>\n\n' + html[idx:]
+
+# 13) Camada v52 (Perda x Venda + importador com conferência)
+v52_css = open(__file__.replace('build.py', 'gestorq-v52.css'), encoding='utf-8').read().rstrip('\n')
+v52_js = open(__file__.replace('build.py', 'gestorq-v52.js'), encoding='utf-8').read().rstrip('\n')
+assert '</script' not in v52_js and '</style' not in v52_css
+idx = html.rstrip().rfind('</body>')
+html = html[:idx] + '<style id="gestorq-v52-style">\n' + v52_css + '\n</style>\n<script id="gestorq-v52">\n' + v52_js + '\n</script>\n\n' + html[idx:]
 
 open(dst, 'w', encoding='utf-8').write(html)
 print('ok:', N, '->', html.count('\n') + 1, 'linhas;', len(html.encode()) // 1024, 'KB')
