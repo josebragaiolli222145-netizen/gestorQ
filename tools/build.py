@@ -166,7 +166,7 @@ sub("""                document.getElementById('authWrap').classList.remove('gon
 #      deduplicava quando o nome do setor era idêntico: "Hortifrutigranjeiro" x
 #      "FLV" (ou "Açougue" x "AÇOUGUE") viravam lançamentos em dobro.
 sub("var sig = [r.data,r.codigo,r.produto,r.departamento,r.motivo,r.quantidade,r.valor].join('|');",
-    "var sig = [r.data,String(r.codigo||'').replace(/^0+(?=\\d)/,''),String(r.produto||'').trim().toUpperCase(),Number(r.quantidade).toFixed(3),Number(r.valor).toFixed(2)].join('|');")
+    "var sig = [r.data,String(r.codigo||'').replace(/^0+(?=\\d)/,''),String(r.produto||'').trim().toUpperCase(),Number(r.quantidade).toFixed(3),Number(r.valor).toFixed(2),String(r.motivo||'Não informado').trim().toUpperCase()].join('|');")
 
 # 11) Marca única: relatórios impressos e manifesto diziam "Qualtrix"
 import re as _re

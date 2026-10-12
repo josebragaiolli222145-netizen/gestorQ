@@ -30911,7 +30911,7 @@ window._gerarPDFDiario = function(resultado, totalGeral, data, dataFmt) {
     try { if(window.GQX2 && typeof window.GQX2.rows === 'function') rows = rows.concat(normalizeRows(window.GQX2.rows())); } catch(e){}
     try { if(window.GQFIX_PERDAS && typeof window.GQFIX_PERDAS.rows === 'function') rows = rows.concat(normalizeRows(window.GQFIX_PERDAS.rows())); } catch(e){}
     var seen = {}, out = [];
-    rows.forEach(function(r){ var sig = [r.data,String(r.codigo||'').replace(/^0+(?=\d)/,''),String(r.produto||'').trim().toUpperCase(),Number(r.quantidade).toFixed(3),Number(r.valor).toFixed(2)].join('|'); if(!seen[sig]){ seen[sig]=1; out.push(r); } });
+    rows.forEach(function(r){ var sig = [r.data,String(r.codigo||'').replace(/^0+(?=\d)/,''),String(r.produto||'').trim().toUpperCase(),Number(r.quantidade).toFixed(3),Number(r.valor).toFixed(2),String(r.motivo||'Não informado').trim().toUpperCase()].join('|'); if(!seen[sig]){ seen[sig]=1; out.push(r); } });
     return out.sort(function(a,b){ return a.data.localeCompare(b.data) || b.valor-a.valor; });
   }
   function loadRows(){
@@ -54609,7 +54609,8 @@ html:not([data-theme="dark"]) .gq-strip b { color: #047857 !important; }
     var w = function(){ var r = o.apply(this, arguments); dirty = true; return r; }; w.__gq51 = true; window.renderVencidos = w;
   }
   // API mínima para a camada v52 (Perda x Venda)
-  window.GQ51 = { novaAcao: novaAcao, getAcoes: getAcoes, save: save, load: load, veFinanceiro: veFinanceiro, modal: modal, MOTIVOS: MOTIVOS.slice(), refresh: function(){ dirty = true; } };
+  // Atenção: GQ51.modal recebe HTML cru — quem chama precisa escapar os dados.
+  window.GQ51 = Object.freeze({ novaAcao: novaAcao, getAcoes: getAcoes, save: save, load: load, veFinanceiro: veFinanceiro, modal: modal, MOTIVOS: MOTIVOS.slice(), refresh: function(){ dirty = true; } });
 
   function boot(){
     try { if (localStorage.getItem(K.loja) === '1') document.body.classList.add('gq51-loja'); } catch(e){}
@@ -54698,7 +54699,8 @@ html:not([data-theme="dark"]) .gq52-qA { color: #b91c1c; } html:not([data-theme=
   function addDias(s, n){ var p = s.split('-'); var d = new Date(+p[0], +p[1] - 1, +p[2]); d.setDate(d.getDate() + n); return iso(d); }
   function diasEntre(a, b){ var pa = a.split('-'), pb = b.split('-'); return Math.round((new Date(+pb[0], +pb[1] - 1, +pb[2]) - new Date(+pa[0], +pa[1] - 1, +pa[2])) / 86400000); }
   function normH(s){ return String(s == null ? '' : s).normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim().toUpperCase(); }
-  function normCod(v){ var s = String(v == null ? '' : v).trim().replace(/\.0+$/, ''); if (/^\d+$/.test(s)) s = s.replace(/^0+(?=\d)/, ''); return s; }
+  function normCod(v){ var s = String(v == null ? '' : v).trim().replace(/\.0+$/, ''); if (/^\d+$/.test(s)) s = s.replace(/^0+(?=\d)/, ''); return /^[\w.\-\/]{1,40}$/.test(s) && !/^(__proto__|constructor|prototype)$/.test(s) ? s : ''; }
+  function dict(src){ var d = Object.create(null); if (src && typeof src === 'object') Object.keys(src).forEach(function(k){ d[k] = src[k]; }); return d; } // mapa sem protótipo (código "__proto__" etc.)
   function curUser(){ try { return window.currentUser || (typeof currentUser !== 'undefined' ? currentUser : null); } catch(e){ return null; } }
   function veFin(){ var u = curUser(); return !!u && FINANCEIRO.test(String(u.role || '')); }
   function isShown(el){ return !!el && el.getClientRects().length > 0 && getComputedStyle(el).display !== 'none'; }
@@ -54809,16 +54811,16 @@ html:not([data-theme="dark"]) .gq52-qA { color: #b91c1c; } html:not([data-theme=
   }
 
   /* ── Conferência ───────────────────────────────────────────────── */
-  function chave(r){ return [r.data, r.codigo || normH(r.produto), num(r.quantidade).toFixed(3), num(r.valor).toFixed(2)].join('|'); }
+  function chave(r){ return [r.data, r.codigo || normH(r.produto), num(r.quantidade).toFixed(3), num(r.valor).toFixed(2), normH(r.motivo || 'Não informado')].join('|'); }
   function analisar(arquivo, P, V){
     var a = { arquivo: arquivo, P: P, V: V, dups: [], precos: [], semVenda: [], nomesDif: 0, diasSemPerda: [] };
     if (P) {
-      var cont = {}; P.linhas.forEach(function(r){ var k = chave(r); cont[k] = (cont[k] || 0) + 1; });
-      var vistos = {};
+      var cont = dict(); P.linhas.forEach(function(r){ var k = chave(r); cont[k] = (cont[k] || 0) + 1; });
+      var vistos = dict();
       P.linhas.forEach(function(r, i){ var k = chave(r); if (cont[k] > 1) { if (vistos[k]) { r.dup = true; a.dups.push(r); } vistos[k] = 1; } });
     }
     if (P && V) {
-      var pv = {}, pp = {};
+      var pv = dict(), pp = dict();
       V.linhas.forEach(function(r){ var o = pv[r.codigo] || (pv[r.codigo] = { v: 0, q: 0, nome: r.produto }); o.v += r.valor; o.q += r.quantidade; });
       P.linhas.forEach(function(r){ if (r.dup) return; var o = pp[r.codigo] || (pp[r.codigo] = { v: 0, q: 0, nome: r.produto }); o.v += r.valor; o.q += r.quantidade; });
       Object.keys(pp).forEach(function(c){
@@ -54828,7 +54830,7 @@ html:not([data-theme="dark"]) .gq52-qA { color: #b91c1c; } html:not([data-theme=
         if (p.q > 0 && v.q > 0) { var ratio = (p.v / p.q) / (v.v / v.q); if (ratio > 1.0) a.precos.push({ nome: p.nome, ratio: ratio, pPerda: p.v / p.q, pVenda: v.v / v.q }); }
       });
       a.precos.sort(function(x, y){ return y.ratio - x.ratio; });
-      var diasV = {}, diasP = {};
+      var diasV = dict(), diasP = dict();
       V.linhas.forEach(function(r){ diasV[r.data] = 1; }); P.linhas.forEach(function(r){ diasP[r.data] = 1; });
       a.diasSemPerda = Object.keys(diasV).filter(function(d){ return !diasP[d]; }).sort();
     }
@@ -54839,7 +54841,7 @@ html:not([data-theme="dark"]) .gq52-qA { color: #b91c1c; } html:not([data-theme=
     var P = a.P, V = a.V;
     var totP = P ? P.linhas.reduce(function(s, r){ return s + r.valor; }, 0) : 0, totV = V ? V.linhas.reduce(function(s, r){ return s + r.valor; }, 0) : 0;
     var datas = [].concat(P ? P.linhas : [], V ? V.linhas : []).map(function(r){ return r.data; }).sort();
-    var setores = {}; if (P) P.linhas.forEach(function(r){ if (r.setor) setores[r.setor] = 1; });
+    var setores = dict(); if (P) P.linhas.forEach(function(r){ if (r.setor) setores[r.setor] = 1; });
     var semMotivo = P ? P.linhas.filter(function(r){ return !r.motivo; }).length : 0;
     var issue = function(id, marcado, titulo, detalhe){ return '<label class="gq52-issue">' + (id ? '<input type="checkbox" id="' + id + '"' + (marcado ? ' checked' : '') + '>' : '<span>ℹ️</span>') + '<span><b>' + titulo + '</b>' + (detalhe ? '<small>' + detalhe + '</small>' : '') + '</span></label>'; };
     var corr = (P ? P.corrigidas : 0) + (V ? V.corrigidas : 0), corrV = (P ? P.valorCorrigido : 0) + (V ? V.valorCorrigido : 0);
@@ -54877,7 +54879,7 @@ html:not([data-theme="dark"]) .gq52-qA { color: #b91c1c; } html:not([data-theme=
 
   /* ── Gravação (mescla, sem apagar o que já existe) ─────────────── */
   function mesclar(existentes, novas, ajustar){
-    var mapa = {}; existentes.forEach(function(r){ var k = chave(r); (mapa[k] = mapa[k] || []).push(r); });
+    var mapa = dict(); existentes.forEach(function(r){ var k = chave(r); (mapa[k] = mapa[k] || []).push(r); });
     var add = 0, ja = 0;
     novas.forEach(function(r){
       var k = chave(r), l = mapa[k];
@@ -54890,10 +54892,10 @@ html:not([data-theme="dark"]) .gq52-qA { color: #b91c1c; } html:not([data-theme=
     var P = a.P, V = a.V, res = { arquivo: a.arquivo, em: new Date().toISOString() };
     var filtra = function(l){ return l.filter(function(r){ return (op.fixData || !r.corrigida) && !(op.dedup && r.dup); }); };
     // catálogo de produtos (unidade e setor)
-    var prod = load(KP, {});
+    var prod = dict(load(KP, {}));
     if (P) P.linhas.forEach(function(r){ if (!r.codigo) return; var o = prod[r.codigo] || (prod[r.codigo] = {}); o.nome = r.produto; o.unidade = r.unidade; if (r.setor) o.setor = r.setor; if (r.setorCod) o.setorCod = r.setorCod; });
     // arquivo de um setor só (ex.: planilha do Hortifruti): as vendas herdam esse setor
-    var setoresP = {}; if (P) P.linhas.forEach(function(r){ if (r.setor) setoresP[r.setor] = 1; });
+    var setoresP = dict(); if (P) P.linhas.forEach(function(r){ if (r.setor) setoresP[r.setor] = 1; });
     var unico = Object.keys(setoresP).length === 1 ? Object.keys(setoresP)[0] : '';
     if (V) V.linhas.forEach(function(r){ if (!r.codigo) return; var o = prod[r.codigo] || (prod[r.codigo] = { nome: r.produto, unidade: r.unidade }); if (!o.nomeVenda) o.nomeVenda = r.produto; if (!o.setor && unico) o.setor = unico; });
     saveLocal(KP, prod);
@@ -54937,13 +54939,13 @@ html:not([data-theme="dark"]) .gq52-qA { color: #b91c1c; } html:not([data-theme=
      ════════════════════════════════════════════════════════════════ */
   function perdasRows(){ var r = load(PERDAS, null); if (!Array.isArray(r) || !r.length) r = load('gestorq_perdas_unified_rows_v1', []); return (r || []).filter(function(x){ return x && x.data && num(x.valor) > 0; }); }
   function setorDeCodigo(){
-    var prod = load(KP, {}), m = {};
+    var prod = dict(load(KP, {})), m = dict();
     Object.keys(prod).forEach(function(c){ if (prod[c].setor) m[c] = prod[c].setor; });
     perdasRows().forEach(function(r){ var c = normCod(r.codigo); if (c && r.departamento && !/^\d+$/.test(r.departamento)) m[c] = r.departamento; });
     return m;
   }
   function calcular(de, ate, setor){
-    var prod = load(KP, {}), setCod = setorDeCodigo(), g = {}, dias = {};
+    var prod = dict(load(KP, {})), setCod = setorDeCodigo(), g = dict(), dias = dict();
     var item = function(c, nome){ return g[c] || (g[c] = { codigo: c, produto: nome, setor: setCod[c] || '', unidade: (prod[c] && prod[c].unidade) || unidadeDe('', nome), perda: 0, qp: 0, venda: 0, qv: 0, diasP: {} }); };
     var dia = function(d){ return dias[d] || (dias[d] = { v: 0, p: 0 }); };
     perdasRows().forEach(function(r){
@@ -55011,15 +55013,16 @@ html:not([data-theme="dark"]) .gq52-qA { color: #b91c1c; } html:not([data-theme=
      ════════════════════════════════════════════════════════════════ */
   function atualizarFaturamento(){
     if (!window.GQ51) return 0;
-    var setCod = setorDeCodigo(), fat = window.GQ51.load('gq51_faturamento', {}) || {}, porMes = {};
-    load(KV, []).forEach(function(r){ var s = setCod[normCod(r.codigo)]; if (!s) return; var m = r.data.slice(0, 7); var o = porMes[m] || (porMes[m] = {}); o[s] = (o[s] || 0) + num(r.valor); });
+    var setCod = setorDeCodigo(), fat = window.GQ51.load('gq51_faturamento', {}) || {}, porMes = dict(), c = cfg(), auto = dict(c.autoFat);
+    load(KV, []).forEach(function(r){ var s = setCod[normCod(r.codigo)]; if (!s) return; var m = r.data.slice(0, 7); var o = porMes[m] || (porMes[m] = dict()); o[s] = (o[s] || 0) + num(r.valor); });
     var n = 0;
     Object.keys(porMes).forEach(function(m){
       var f = fat[m] || { total: 0, setores: {} }; f.setores = f.setores || {};
-      Object.keys(porMes[m]).forEach(function(s){ f.setores[s] = Math.round(porMes[m][s] * 100) / 100; n++; });
+      Object.keys(porMes[m]).forEach(function(s){ var k = m + '|' + s; if (f.setores[s] && !auto[k]) return; /* valor digitado à mão: mantém */ f.setores[s] = Math.round(porMes[m][s] * 100) / 100; auto[k] = true; n++; });
       fat[m] = f;
     });
     window.GQ51.save('gq51_faturamento', fat);
+    c.autoFat = auto; saveLocal(KC, c);
     return n;
   }
   function criarPendencias(de, ate){
@@ -55037,6 +55040,7 @@ html:not([data-theme="dark"]) .gq52-qA { color: #b91c1c; } html:not([data-theme=
     return n;
   }
   function comprasHtml(dias){
+    if (!veFin()) return '';
     var ate = iso(new Date()), r = load(KR, null);
     var c = calcular(addDias(ate, -(dias || 60)), ate, '');
     if (!c.temVenda && r && r.de) c = calcular(r.de, r.ate, '');
@@ -55047,7 +55051,7 @@ html:not([data-theme="dark"]) .gq52-qA { color: #b91c1c; } html:not([data-theme=
       l.map(function(o){ return '<tr><td><b>' + esc(o.produto) + '</b><div style="font-size:.72rem;color:var(--gq-text-2)">' + esc(o.setor) + '</div></td><td class="n">' + pctFmt(o.quebra) + '</td><td class="n">' + brl(o.perda) + '</td><td><div class="gq52-sug">' + esc(o.sug) + '</div></td></tr>'; }).join('') +
       '</tbody></table></div></div>';
   }
-  window.GQ52 = { comprasHtml: comprasHtml, calcular: calcular, parseData: lerData };
+  window.GQ52 = Object.freeze({ comprasHtml: comprasHtml, calcular: function(a, b, c){ return veFin() ? calcular(a, b, c) : null; }, parseData: lerData });
 
   /* ════════════════════════════════════════════════════════════════
      B) Página Perda x Venda
@@ -55072,6 +55076,7 @@ html:not([data-theme="dark"]) .gq52-qA { color: #b91c1c; } html:not([data-theme=
   function syncPerm(){
     var ok = veFin();
     ['navGQ52PV', 'gq52SidePV'].forEach(function(id){ var el = $(id); if (el && el.__ok !== ok) { el.style.display = ok ? '' : 'none'; el.__ok = ok; } });
+    var btn = $('gq52BtnPV'); if (btn && !ok) btn.remove();
     var acts = document.querySelector('#pageGQFinal .gqf-actions');
     if (acts && ok && !$('gq52BtnPV')) {
       var b = document.createElement('button'); b.id = 'gq52BtnPV'; b.type = 'button'; b.textContent = '🥬 Perda x Venda';
@@ -55082,6 +55087,7 @@ html:not([data-theme="dark"]) .gq52-qA { color: #b91c1c; } html:not([data-theme=
   // O botão "Importar XLSX" da aba Perdas passa a usar este importador (com conferência e sem apagar dados)
   window.addEventListener('change', function(e){
     var t = e.target; if (!t || t.id !== 'gqfFile') return;
+    if (!veFin() || typeof window.XLSX === 'undefined') return; // sem permissão ou sem biblioteca: segue o importador antigo
     e.stopImmediatePropagation();
     var f = t.files && t.files[0]; t.value = ''; if (f) lerArquivo(f, abrirConferencia);
   }, true);
@@ -55093,8 +55099,8 @@ html:not([data-theme="dark"]) .gq52-qA { color: #b91c1c; } html:not([data-theme=
     if (!pv.de) { var p = periodoPadrao(); pv.de = p.de; pv.ate = p.ate; }
     var c = calcular(pv.de, pv.ate, pv.setor);
     var len = diasEntre(pv.de, pv.ate) + 1, prev = calcular(addDias(pv.de, -len), addDias(pv.de, -1), pv.setor);
-    var prevMap = {}; prev.lista.forEach(function(o){ prevMap[o.codigo] = o; });
-    var setores = {}; Object.keys(load(KP, {})).forEach(function(k){ var s = load(KP, {})[k].setor; if (s) setores[s] = 1; }); perdasRows().forEach(function(r){ if (r.departamento && !/^\d+$/.test(r.departamento)) setores[r.departamento] = 1; });
+    var prevMap = dict(); prev.lista.forEach(function(o){ prevMap[o.codigo] = o; });
+    var setores = dict(); Object.keys(load(KP, {})).forEach(function(k){ var s = load(KP, {})[k].setor; if (s) setores[s] = 1; }); perdasRows().forEach(function(r){ if (r.departamento && !/^\d+$/.test(r.departamento)) setores[r.departamento] = 1; });
     var meta = metaDe(pv.setor), r = load(KR, null);
     var head = '<div style="display:flex;justify-content:space-between;align-items:flex-end;gap:10px;flex-wrap:wrap;margin:4px 0 12px">' +
       '<div><h2 style="margin:0;font-size:1.35rem;font-weight:800">Perda x Venda</h2><p class="gq-sub" style="margin:2px 0 0">Quebra por produto = perda ÷ (venda + perda). Mostra onde está o dinheiro e o que mudar na compra.</p></div>' +
@@ -55133,15 +55139,15 @@ html:not([data-theme="dark"]) .gq52-qA { color: #b91c1c; } html:not([data-theme=
           '<td>' + (c.temVenda ? '<span class="gq52-q ' + QUAD[o.q].cls + '">' + QUAD[o.q].n + '</span>' : '—') + '</td>' +
           '<td class="n">' + brl(o.venda) + '</td><td class="n"><b>' + brl(o.perda) + '</b></td>' +
           '<td class="n">' + (c.temVenda ? '<b style="color:' + (o.quebra >= o.meta ? 'var(--gq-danger)' : 'var(--gq-ok)') + '">' + pctFmt(o.quebra) + '</b>' + delta(d) : '—') + '</td>' +
-          '<td class="n">' + numFmt(o.qp, o.unidade === 'kg' ? 2 : 0) + ' ' + o.unidade + '</td>' +
+          '<td class="n">' + numFmt(o.qp, o.unidade === 'kg' ? 2 : 0) + ' ' + (o.unidade === 'kg' ? 'kg' : 'un') + '</td>' +
           '<td class="n">' + (o.ratio ? brl(o.pPerda) + ' × ' + brl(o.pVenda) + (o.ratio > 1 ? ' <span class="gq52-warn" title="Perda valendo mais que a venda: conferir unidade/preço">⚠️</span>' : '') : '—') + '</td>' +
           '<td><div class="gq52-sug">' + esc(o.sug) + '</div></td>' +
           '<td><button class="gq-btn sm" data-a="pend" data-cod="' + esc(o.codigo) + '" title="Criar pendência para este produto">＋ Pendência</button></td></tr>';
       }).join('') + '</tbody></table></div>' + (lista.length > 80 ? '<p class="gq-sub">Mostrando 80 de ' + lista.length + '. Use a busca ou exporte para Excel.</p>' : '') + '</div>';
     var rel = r ? '<details class="gq-section"><summary style="cursor:pointer;font-weight:800">📋 Última importação: ' + esc(r.arquivo) + ' (' + esc(new Date(r.em).toLocaleString('pt-BR')) + ')</summary><div class="gq-sub" style="margin-top:8px">' +
-      (r.perdas ? 'Perdas: ' + r.perdas.add + ' novas, ' + r.perdas.ja + ' já existiam (' + brl(r.perdas.total) + '). ' : '') + (r.vendas ? 'Vendas: ' + r.vendas.add + ' novas, ' + r.vendas.ja + ' já existiam (' + brl(r.vendas.total) + '). ' : '') +
-      (r.avisos && r.avisos.corrigidas ? r.avisos.corrigidas + ' data(s) corrigida(s). ' : '') + (r.avisos && r.avisos.dups ? r.avisos.dups + ' lançamento(s) em dobro removido(s). ' : '') +
-      (r.fat ? 'Faturamento atualizado em Indicadores. ' : '') + (r.pend ? r.pend + ' pendência(s) criada(s). ' : '') +
+      (r.perdas ? 'Perdas: ' + (+r.perdas.add || 0) + ' novas, ' + (+r.perdas.ja || 0) + ' já existiam (' + brl(r.perdas.total) + '). ' : '') + (r.vendas ? 'Vendas: ' + (+r.vendas.add || 0) + ' novas, ' + (+r.vendas.ja || 0) + ' já existiam (' + brl(r.vendas.total) + '). ' : '') +
+      (r.avisos && r.avisos.corrigidas ? (+r.avisos.corrigidas || 0) + ' data(s) corrigida(s). ' : '') + (r.avisos && r.avisos.dups ? (+r.avisos.dups || 0) + ' lançamento(s) em dobro removido(s). ' : '') +
+      (r.fat ? 'Faturamento atualizado em Indicadores. ' : '') + (r.pend ? (+r.pend || 0) + ' pendência(s) criada(s). ' : '') +
       (r.avisos && r.avisos.precos && r.avisos.precos.length ? '<br>⚠️ Conferir preço/unidade: ' + r.avisos.precos.map(function(x){ return esc(x.nome); }).join(', ') + '.' : '') + '</div></details>' : '';
     pg.innerHTML = head + kpis + rel + matriz + diario + tabela;
     desenhar(c, meta);
@@ -55211,7 +55217,7 @@ html:not([data-theme="dark"]) .gq52-qA { color: #b91c1c; } html:not([data-theme=
   }
   function onChange(e){
     var el = e.target, f = el.getAttribute('data-f');
-    if (el.id === 'gq52File' && el.files && el.files[0]) return lerArquivo(el.files[0], abrirConferencia);
+    if (el.id === 'gq52File' && el.files && el.files[0]) { if (!veFin()) return; return lerArquivo(el.files[0], abrirConferencia); }
     if (!f) return;
     if (f === 'meta') { var c = cfg(), v = num(el.value); if (!(v > 0 && v < 100)) return; if (pv.setor) c.metas[pv.setor] = v; else c.metaPadrao = v; saveLocal(KC, c); }
     else if (f === 'de' || f === 'ate') { if (/^\d{4}-\d{2}-\d{2}$/.test(el.value)) pv[f] = el.value; if (pv.de > pv.ate) { var t = pv.de; pv.de = pv.ate; pv.ate = t; } }

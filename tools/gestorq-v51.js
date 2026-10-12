@@ -1155,7 +1155,8 @@
     var w = function(){ var r = o.apply(this, arguments); dirty = true; return r; }; w.__gq51 = true; window.renderVencidos = w;
   }
   // API mínima para a camada v52 (Perda x Venda)
-  window.GQ51 = { novaAcao: novaAcao, getAcoes: getAcoes, save: save, load: load, veFinanceiro: veFinanceiro, modal: modal, MOTIVOS: MOTIVOS.slice(), refresh: function(){ dirty = true; } };
+  // Atenção: GQ51.modal recebe HTML cru — quem chama precisa escapar os dados.
+  window.GQ51 = Object.freeze({ novaAcao: novaAcao, getAcoes: getAcoes, save: save, load: load, veFinanceiro: veFinanceiro, modal: modal, MOTIVOS: MOTIVOS.slice(), refresh: function(){ dirty = true; } });
 
   function boot(){
     try { if (localStorage.getItem(K.loja) === '1') document.body.classList.add('gq51-loja'); } catch(e){}
