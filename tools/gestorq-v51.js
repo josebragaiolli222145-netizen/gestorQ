@@ -757,6 +757,8 @@
       '<label>Meta (%)<input type="number" step="0.01" min="0" data-ind="meta" value="' + c.meta + '"></label>' +
       '<label>Faturamento do mês (R$)<input type="number" step="0.01" min="0" id="gq51FatTotal" value="' + (num(f.total) || '') + '" placeholder="ex.: 850000"></label>' +
       '<label>&nbsp;<button class="gq-btn pri" data-a="salvarFat">Salvar</button></label></div>' +
+      (!(num(f.total) > 0) && Object.keys(f.setores || {}).length ? '<p class="gq-sub" style="margin-top:12px">ℹ️ Há faturamento só por setor (soma ' + brl(Object.keys(f.setores).reduce(function(t, k){ return t + num(f.setores[k]); }, 0)) + '). Informe o total da loja para o índice geral; o índice por setor está logo abaixo.</p>' : '') +
+      '<p class="gq-sub" style="margin-top:8px">Aqui o índice é perda ÷ faturamento (padrão Abrappe). Na página Perda x Venda, a quebra por produto é perda ÷ (venda + perda), por isso os números diferem um pouco.</p>' +
       '<div style="display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-top:16px"><div style="font-size:2.2rem;font-weight:900;color:' + cor + '" class="gq-num">' + (idx == null ? '—' : pctFmt(idx)) + '</div>' +
       '<div style="color:var(--gq-text-2);font-size:.86rem">' + brl(perdas) + ' em perdas' + (num(f.total) > 0 ? ' sobre ' + brl(f.total) + ' de faturamento' : ' · informe o faturamento para calcular') + '</div></div>' +
       '<div class="gq-bar"><i style="width:' + Math.min(100, (idx || 0) / escala * 100) + '%;background:' + cor + '"></i>' +
@@ -1149,6 +1151,10 @@
       if (!abas.some(function(id){ return isShown($(id)); }) && $('tempTabRegistro')) { try { window.setTempTab('registro', $('ttRegistro')); } catch(e){} }
     }
     vis.t = tShown;
+    // Plano de ação abria mostrando 0/0/0 até alguém chamar renderPlanoAcao()
+    var pa = $('pagePlanoAcao'), paShown = isShown(pa);
+    if (paShown && !vis.pa && typeof window.renderPlanoAcao === 'function') { try { window.renderPlanoAcao(); } catch(e){} }
+    vis.pa = paShown;
   }
   function wrapRenderVencidos(){
     var o = window.renderVencidos; if (typeof o !== 'function' || o.__gq51) return;

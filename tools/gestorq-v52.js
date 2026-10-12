@@ -179,20 +179,21 @@
   var MOTIVOS = ['Não informado', 'Vencido', 'Avaria/Quebra', 'Furto', 'Quebra operacional', 'Erro de recebimento', 'Temperatura/Deterioração', 'Erro de inventário', 'Doação', 'Outros'];
   function abrirConferencia(a){
     var P = a.P, V = a.V;
-    var totP = P ? P.linhas.reduce(function(s, r){ return s + r.valor; }, 0) : 0, totV = V ? V.linhas.reduce(function(s, r){ return s + r.valor; }, 0) : 0;
+    var fin = veFin(), linhasP = P ? P.linhas.filter(function(r){ return !r.dup; }) : [];
+    var totP = linhasP.reduce(function(s, r){ return s + r.valor; }, 0), totV = V ? V.linhas.reduce(function(s, r){ return s + r.valor; }, 0) : 0;
     var datas = [].concat(P ? P.linhas : [], V ? V.linhas : []).map(function(r){ return r.data; }).sort();
     var setores = dict(); if (P) P.linhas.forEach(function(r){ if (r.setor) setores[r.setor] = 1; });
-    var semMotivo = P ? P.linhas.filter(function(r){ return !r.motivo; }).length : 0;
+    var semMotivo = linhasP.filter(function(r){ return !r.motivo; }).length;
     var issue = function(id, marcado, titulo, detalhe){ return '<label class="gq52-issue">' + (id ? '<input type="checkbox" id="' + id + '"' + (marcado ? ' checked' : '') + '>' : '<span>ℹ️</span>') + '<span><b>' + titulo + '</b>' + (detalhe ? '<small>' + detalhe + '</small>' : '') + '</span></label>'; };
     var corr = (P ? P.corrigidas : 0) + (V ? V.corrigidas : 0), corrV = (P ? P.valorCorrigido : 0) + (V ? V.valorCorrigido : 0);
     var html = '<h3>📥 Conferência da importação</h3><p><b>' + esc(a.arquivo) + '</b> · ' + (datas.length ? brDate(datas[0]) + ' a ' + brDate(datas[datas.length - 1]) : '') + '</p>' +
       '<div class="gq-kpis" style="grid-template-columns:repeat(2,1fr)">' +
-        '<div class="gq-kpi danger" style="cursor:default"><div class="l">Perdas' + (P ? ' (aba ' + esc(P.nome) + ')' : '') + '</div><div class="v">' + brl(totP) + '</div><div class="s">' + (P ? P.linhas.length + ' lançamentos · ' + Object.keys(setores).map(esc).join(', ') : 'aba de perdas não encontrada') + '</div></div>' +
-        '<div class="gq-kpi ok" style="cursor:default"><div class="l">Vendas' + (V ? ' (aba ' + esc(V.nome) + ')' : '') + '</div><div class="v">' + brl(totV) + '</div><div class="s">' + (V ? V.linhas.length + ' linhas' : 'sem aba de vendas — a quebra não poderá ser calculada') + '</div></div></div>' +
+        '<div class="gq-kpi danger" style="cursor:default"><div class="l">Perdas' + (P ? ' (aba ' + esc(P.nome) + ')' : '') + '</div><div class="v">' + (fin ? brl(totP) : linhasP.length) + '</div><div class="s">' + (P ? linhasP.length + ' lançamentos (já sem os em dobro) · ' + Object.keys(setores).map(esc).join(', ') : 'aba de perdas não encontrada') + '</div></div>' +
+        '<div class="gq-kpi ok" style="cursor:default"><div class="l">Vendas' + (V ? ' (aba ' + esc(V.nome) + ')' : '') + '</div><div class="v">' + (fin ? brl(totV) : (V ? V.linhas.length : 0)) + '</div><div class="s">' + (V ? V.linhas.length + ' linhas' : 'sem aba de vendas — a quebra não poderá ser calculada') + '</div></div></div>' +
       '<div class="gq52-issues">' +
-        (corr ? issue('gq52FixData', true, 'Corrigir ' + corr + ' data(s) com ano errado (ex.: 0026 → 2026)', brl(corrV) + ' em lançamentos. Desmarque para ignorar essas linhas.') : '') +
+        (corr ? issue('gq52FixData', true, 'Corrigir ' + corr + ' data(s) com ano errado (ex.: 0026 → 2026)', (fin ? brl(corrV) + ' em lançamentos. ' : '') + 'Desmarque para ignorar essas linhas.') : '') +
         (a.dups.length ? issue(null, false, a.dups.length + ' lançamento(s) de perda em dobro serão importados uma vez só', a.dups.slice(0, 4).map(function(r){ return esc(r.produto) + ' ' + brDate(r.data) + ' (' + numFmt(r.quantidade, 3) + ' · ' + brl(r.valor) + ')'; }).join('; ') + (a.dups.length > 4 ? '…' : '') + ' — mesmo produto, dia, quantidade e valor.') : '') +
-        (a.precos.length ? issue(null, false, '<span class="gq52-warn">Conferir unidade/preço de ' + a.precos.length + ' produto(s)</span>: a perda está valendo mais que o preço de venda', a.precos.slice(0, 5).map(function(x){ return esc(x.nome) + ' (perda ' + brl(x.pPerda) + ' × venda ' + brl(x.pVenda) + ')'; }).join('; ')) : '') +
+        (a.precos.length && fin ? issue(null, false, '<span class="gq52-warn">Conferir unidade/preço de ' + a.precos.length + ' produto(s)</span>: a perda está valendo mais que o preço de venda', a.precos.slice(0, 5).map(function(x){ return esc(x.nome) + ' (perda ' + brl(x.pPerda) + ' × venda ' + brl(x.pVenda) + ')'; }).join('; ')) : '') +
         (a.semVenda.length ? issue(null, false, a.semVenda.length + ' produto(s) com perda e sem venda no período', a.semVenda.slice(0, 6).map(esc).join(', ')) : '') +
         (a.nomesDif ? issue(null, false, a.nomesDif + ' produto(s) com nomes diferentes entre as abas', 'O cruzamento é feito pelo código, então isso não afeta o cálculo.') : '') +
         (a.diasSemPerda.length ? issue(null, false, a.diasSemPerda.length + ' dia(s) com venda e sem lançamento de perda', a.diasSemPerda.map(brDate).join(', ') + ' — confirme se a rotina de lançamento foi feita.') : '') +
@@ -201,8 +202,8 @@
       '<div class="gq-form">' +
         (semMotivo ? '<label style="grid-column:1/-1">Motivo para os ' + semMotivo + ' lançamentos sem motivo<select id="gq52Motivo">' + MOTIVOS.map(function(m){ return '<option>' + m + '</option>'; }).join('') + '</select></label>' : '') + '</div>' +
       '<div class="gq52-issues">' +
-        (V ? issue('gq52Fat', true, 'Usar as vendas como faturamento do setor em Indicadores', 'Calcula o índice de perdas do setor automaticamente.') : '') +
-        (P ? issue('gq52Pend', true, 'Criar pendências para os 5 produtos com maior perda', 'Com responsável e prazo, no Plano de ação.') : '') +
+        (V && fin ? issue('gq52Fat', true, 'Usar as vendas como faturamento do setor em Indicadores', 'Calcula o índice de perdas do setor automaticamente.') : '') +
+        (P && fin ? issue('gq52Pend', true, 'Criar pendências para os 5 produtos com maior perda', 'Com responsável e prazo, no Plano de ação.') : '') +
       '</div><p style="font-size:.76rem">Importações anteriores são mantidas: lançamentos já existentes não são duplicados.</p>' +
       '<div class="row"><button class="gq-btn" data-x="c">Cancelar</button><button class="gq-btn pri" data-x="ok">Importar</button></div>';
     var ov = modal(html);
@@ -268,6 +269,7 @@
     if (op.pend && P) res.pend = criarPendencias(res.de, res.ate);
     saveLocal(KR, res);
     pv.de = res.de; pv.ate = res.ate; pv.setor = '';
+    if (!veFin()) { notify('✅ Importado: ' + (res.perdas ? res.perdas.add + ' lançamento(s) de perda novo(s)' : '') + '.', 'success'); try { if (window.GQ51) window.GQ51.refresh(); } catch(e){} return; }
     notify('✅ Importado: ' + (res.perdas ? res.perdas.add + ' perda(s) nova(s)' : '') + (res.vendas ? ' · ' + res.vendas.add + ' venda(s) nova(s)' : '') + ((res.perdas && res.perdas.ja) || (res.vendas && res.vendas.ja) ? ' · ' + ((res.perdas ? res.perdas.ja : 0) + (res.vendas ? res.vendas.ja : 0)) + ' já existiam' : '') + '.', 'success');
     try { if (window.GQ51) window.GQ51.refresh(); } catch(e){}
     try { window.goPage('PerdaVenda', $('navGQ52PV')); } catch(e){}
@@ -401,7 +403,7 @@
     if ($('pagePerdaVenda') || !$('mainScroll')) return;
     var pg = document.createElement('div'); pg.id = 'pagePerdaVenda'; pg.className = 'page';
     $('mainScroll').appendChild(pg);
-    pg.addEventListener('click', onClick); pg.addEventListener('change', onChange);
+    pg.addEventListener('click', onClick); pg.addEventListener('change', onChange); pg.addEventListener('input', onInput);
   }
   function setupNav(){
     var nav = $('pwaNav'); if (!nav || $('navGQ52PV')) return;
@@ -427,7 +429,7 @@
   // O botão "Importar XLSX" da aba Perdas passa a usar este importador (com conferência e sem apagar dados)
   window.addEventListener('change', function(e){
     var t = e.target; if (!t || t.id !== 'gqfFile') return;
-    if (!veFin() || typeof window.XLSX === 'undefined') return; // sem permissão ou sem biblioteca: segue o importador antigo
+    if (typeof window.XLSX === 'undefined') return; // sem biblioteca: segue o importador antigo (que também avisará)
     e.stopImmediatePropagation();
     var f = t.files && t.files[0]; t.value = ''; if (f) lerArquivo(f, abrirConferencia);
   }, true);
@@ -442,6 +444,8 @@
     var prevMap = dict(); prev.lista.forEach(function(o){ prevMap[o.codigo] = o; });
     var setores = dict(); Object.keys(load(KP, {})).forEach(function(k){ var s = load(KP, {})[k].setor; if (s) setores[s] = 1; }); perdasRows().forEach(function(r){ if (r.departamento && !/^\d+$/.test(r.departamento)) setores[r.departamento] = 1; });
     var meta = metaDe(pv.setor), r = load(KR, null);
+    var metaCard = meta;
+    if (!pv.setor) { var pesoT = 0, soma = 0; c.lista.forEach(function(o){ var w = o.venda + o.perda; pesoT += w; soma += o.meta * w; }); if (pesoT > 0) metaCard = soma / pesoT; }
     var head = '<div style="display:flex;justify-content:space-between;align-items:flex-end;gap:10px;flex-wrap:wrap;margin:4px 0 12px">' +
       '<div><h2 style="margin:0;font-size:1.35rem;font-weight:800">Perda x Venda</h2><p class="gq-sub" style="margin:2px 0 0">Quebra por produto = perda ÷ (venda + perda). Mostra onde está o dinheiro e o que mudar na compra.</p></div>' +
       '<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="gq-btn pri" data-a="importar">📥 Importar planilha</button><button class="gq-btn" data-a="xlsx">📊 Exportar Excel</button><input type="file" id="gq52File" accept=".xlsx,.xls,.csv" style="display:none"></div></div>' +
@@ -453,10 +457,10 @@
       return;
     }
     var dq = prev.tot.venda + prev.tot.perda > 0 ? c.tot.quebra - prev.tot.quebra : null;
-    var qCls = !c.temVenda ? '' : c.tot.quebra <= meta ? 'ok' : c.tot.quebra <= meta * 1.5 ? 'warn' : 'danger';
+    var qCls = !c.temVenda ? '' : c.tot.quebra <= metaCard ? 'ok' : c.tot.quebra <= metaCard * 1.5 ? 'warn' : 'danger';
     var delta = function(v){ return v == null ? '' : '<span class="gq52-delta ' + (v > 0 ? 'gq52-up">▲ ' : 'gq52-down">▼ ') + pctFmt(Math.abs(v)) + ' p.p.</span>'; };
     var kpis = '<div class="gq52-kpis">' +
-      '<div class="gq-kpi ' + qCls + '" style="cursor:default"><div class="l">Quebra do período</div><div class="v">' + (c.temVenda ? pctFmt(c.tot.quebra) : '—') + delta(c.temVenda ? dq : null) + '</div><div class="s">' + (c.temVenda ? 'meta ' + pctFmt(meta) + (dq != null ? ' · vs período anterior' : '') : 'importe a aba VENDAS para calcular') + '</div></div>' +
+      '<div class="gq-kpi ' + qCls + '" style="cursor:default"><div class="l">Quebra do período</div><div class="v">' + (c.temVenda ? pctFmt(c.tot.quebra) : '—') + delta(c.temVenda ? dq : null) + '</div><div class="s">' + (c.temVenda ? 'perda ÷ (venda + perda) · meta ' + pctFmt(metaCard) + (pv.setor ? '' : ' (ponderada)') + (dq != null ? ' · vs período anterior' : '') : 'importe a aba VENDAS para calcular') + '</div></div>' +
       '<div class="gq-kpi danger" style="cursor:default"><div class="l">Perdas (valor lançado)</div><div class="v">' + brl(c.tot.perda) + '</div><div class="s">' + c.comPerda.length + ' produtos · ' + numFmt(c.tot.kg, 1) + ' kg + ' + numFmt(c.tot.un, 0) + ' un</div></div>' +
       '<div class="gq-kpi ok" style="cursor:default"><div class="l">Vendas</div><div class="v">' + brl(c.tot.venda) + '</div><div class="s">' + c.nDiasV + ' dia(s) com venda</div></div>' +
       '<div class="gq-kpi warn" style="cursor:default"><div class="l">Venda que deixou de acontecer</div><div class="v">' + brl(c.tot.vendaPerdida) + '</div><div class="s">quantidade perdida × preço médio de venda</div></div>' +
@@ -467,15 +471,15 @@
       '<div class="gq52-chart"><canvas id="gq52Scatter"></canvas></div><div class="gq52-quad">' + ['A', 'B', 'C', 'D'].map(function(k){ return '<div><b><span class="gq52-q ' + QUAD[k].cls + '">' + QUAD[k].n + '</span> ' + cont[k] + '</b>' + QUAD[k].d + '</div>'; }).join('') + '</div></div>' : '';
     var diario = '<div class="gq-section"><h3>📅 Dia a dia</h3><p class="gq-sub">Vendas, perdas e quebra diária. Barras laranja: dia com venda e sem perda lançada (falha na rotina). Nesses dias a quebra fica em branco.</p><div class="gq52-chart sm"><canvas id="gq52Diario"></canvas></div></div>';
     var busca = normH(pv.busca);
-    var lista = c.comPerda.filter(function(o){ return !busca || normH(o.produto).indexOf(busca) >= 0 || o.codigo.indexOf(busca) >= 0; })
+    var lista = c.comPerda.filter(function(o){ return !busca || (normH(o.produto) + ' ' + o.codigo).indexOf(busca) >= 0; })
       .sort(function(a, b){ return pv.ordem === 'quebra' ? b.quebra - a.quebra : pv.ordem === 'venda' ? b.vendaPerdida - a.vendaPerdida : b.perda - a.perda; });
     var tabela = '<div class="gq-section"><h3>🥬 Quebra por produto</h3><div class="gq-form" style="margin-bottom:10px"><label>Ordenar por<select data-f="ordem">' +
       [['perda', 'Maior perda (R$)'], ['quebra', 'Maior quebra (%)'], ['venda', 'Maior venda perdida']].map(function(o){ return '<option value="' + o[0] + '"' + (pv.ordem === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') +
       '</select></label><label>Buscar produto<input data-f="busca" value="' + esc(pv.busca) + '" placeholder="nome ou código"></label></div>' +
-      '<div class="gq-tbl-wrap"><table class="gq-tbl gq52-tbl"><thead><tr><th>Produto</th><th>Quadrante</th><th class="n">Venda</th><th class="n">Perda</th><th class="n">Quebra</th><th class="n">Qtd perdida</th><th class="n">R$/un perda × venda</th><th>Sugestão</th><th></th></tr></thead><tbody>' +
+      '<p class="gq52-dica">↔ Arraste a tabela para o lado para ver todas as colunas.</p><div class="gq-tbl-wrap"><table class="gq-tbl gq52-tbl"><thead><tr><th>Produto</th><th>Quadrante</th><th class="n">Venda</th><th class="n">Perda</th><th class="n">Quebra</th><th class="n">Qtd perdida</th><th class="n">R$/un perda × venda</th><th>Sugestão</th><th></th></tr></thead><tbody>' +
       lista.slice(0, 80).map(function(o){
         var p = prevMap[o.codigo], d = p && (p.venda + p.perda) > 0 && c.temVenda ? o.quebra - p.quebra : null;
-        return '<tr><td class="prod"><b>' + esc(o.produto) + '</b><div style="font-size:.72rem;color:var(--gq-text-2)">' + esc(o.codigo.indexOf('N:') === 0 ? '' : o.codigo) + (o.setor ? ' · ' + esc(o.setor) : '') + '</div></td>' +
+        return '<tr data-b="' + esc(normH(o.produto) + ' ' + o.codigo) + '"><td class="prod"><b>' + esc(o.produto) + '</b><div style="font-size:.72rem;color:var(--gq-text-2)">' + esc(o.codigo.indexOf('N:') === 0 ? '' : o.codigo) + (o.setor ? ' · ' + esc(o.setor) : '') + '</div></td>' +
           '<td>' + (c.temVenda ? '<span class="gq52-q ' + QUAD[o.q].cls + '">' + QUAD[o.q].n + '</span>' : '—') + '</td>' +
           '<td class="n">' + brl(o.venda) + '</td><td class="n"><b>' + brl(o.perda) + '</b></td>' +
           '<td class="n">' + (c.temVenda ? '<b style="color:' + (o.quebra >= o.meta ? 'var(--gq-danger)' : 'var(--gq-ok)') + '">' + pctFmt(o.quebra) + '</b>' + delta(d) : '—') + '</td>' +
@@ -499,7 +503,7 @@
   }
   function desenhar(c, meta){
     if (typeof window.Chart !== 'function') return;
-    var dark = document.documentElement.getAttribute('data-theme') === 'dark', tc = dark ? '#9fb0c8' : '#55627a', gc = dark ? 'rgba(148,163,184,.15)' : 'rgba(15,23,42,.08)';
+    var dark = document.documentElement.getAttribute('data-theme') === 'dark', tc = dark ? '#9fb0c8' : '#334155', gc = dark ? 'rgba(148,163,184,.15)' : 'rgba(15,23,42,.08)';
     var sc = $('gq52Scatter');
     if (sc) {
       var maxP = Math.max.apply(null, c.comPerda.map(function(o){ return o.perda; }).concat([1]));
@@ -514,7 +518,7 @@
         pv.charts.s = new window.Chart(sc.getContext('2d'), { type: 'bubble', data: { datasets: ds },
           options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: tc, filter: function(i){ return i.text !== 'Venda mediana'; } } },
             tooltip: { callbacks: { label: function(x){ var d = x.raw; return d.nome ? d.nome + ': venda ' + brl(d.x) + ', quebra ' + pctFmt(d.y) + ', perda ' + brl(d.perda) : x.dataset.label; } } } },
-            scales: { x: { type: 'logarithmic', title: { display: true, text: 'Venda no período (R$, escala log)', color: tc }, ticks: { color: tc, callback: function(v){ var s = String(v); return /^[125]/.test(s) ? 'R$ ' + Number(v).toLocaleString('pt-BR') : ''; } }, grid: { color: gc } },
+            scales: { x: { type: 'logarithmic', title: { display: true, text: 'Venda no período (R$, escala log)', color: tc }, ticks: { color: tc, autoSkip: true, maxRotation: 0, callback: function(v){ var s = String(v), estreito = sc.clientWidth < 600; return (estreito ? /^1/.test(s) : /^[125]/.test(s)) ? 'R$ ' + Number(v).toLocaleString('pt-BR') : ''; } }, grid: { color: gc } },
               y: { min: 0, max: 100, title: { display: true, text: 'Quebra (%)', color: tc }, ticks: { color: tc, callback: function(v){ return v + '%'; } }, grid: { color: gc } } } } });
       } catch(e){ console.warn('[v52 matriz]', e); }
     }
@@ -535,11 +539,11 @@
   function exportar(){
     if (typeof window.XLSX === 'undefined') return notify('Biblioteca de Excel não carregada.', 'warning');
     var c = calcular(pv.de, pv.ate, pv.setor);
-    var linhas = c.comPerda.sort(function(a, b){ return b.perda - a.perda; }).map(function(o){
-      return [o.codigo.indexOf('N:') === 0 ? '' : o.codigo, o.produto, o.setor, o.unidade, +o.venda.toFixed(2), +o.qv.toFixed(3), +o.perda.toFixed(2), +o.qp.toFixed(3), +o.quebra.toFixed(2), o.meta, QUAD[o.q].n, +o.vendaPerdida.toFixed(2), o.ratio ? +o.ratio.toFixed(2) : '', o.sug];
+    var linhas = c.lista.sort(function(a, b){ return b.perda - a.perda || b.venda - a.venda; }).map(function(o){
+      return [o.codigo.indexOf('N:') === 0 ? '' : o.codigo, o.produto, o.setor, o.unidade, +o.venda.toFixed(2), +o.qv.toFixed(3), +o.perda.toFixed(2), +o.qp.toFixed(3), +o.quebra.toFixed(2), o.meta, o.perda > 0 ? QUAD[o.q].n : '', +o.vendaPerdida.toFixed(2), o.ratio ? +o.ratio.toFixed(2) : '', o.perda > 0 ? o.sug : 'Sem perda no período'];
     });
     var ws = window.XLSX.utils.aoa_to_sheet([['Código', 'Produto', 'Setor', 'Unidade', 'Venda R$', 'Qtd vendida', 'Perda R$', 'Qtd perdida', 'Quebra %', 'Meta %', 'Quadrante', 'Venda perdida R$', 'Preço perda/venda', 'Sugestão']].concat(linhas));
-    var wd = window.XLSX.utils.aoa_to_sheet([['Data', 'Vendas R$', 'Perdas R$', 'Quebra %']].concat(c.diasLista.map(function(d){ var x = c.dias[d]; return [brDate(d), +x.v.toFixed(2), +x.p.toFixed(2), x.v + x.p > 0 ? +(x.p / (x.v + x.p) * 100).toFixed(2) : '']; })));
+    var wd = window.XLSX.utils.aoa_to_sheet([['Data', 'Vendas R$', 'Perdas R$', 'Quebra %', 'Observação']].concat(c.diasLista.map(function(d){ var x = c.dias[d]; return [brDate(d), +x.v.toFixed(2), +x.p.toFixed(2), x.p > 0 ? +(x.p / (x.v + x.p) * 100).toFixed(2) : '', x.v > 0 && !x.p ? 'sem lançamento de perda' : '']; })));
     var wb = window.XLSX.utils.book_new(); window.XLSX.utils.book_append_sheet(wb, ws, 'Quebra por produto'); window.XLSX.utils.book_append_sheet(wb, wd, 'Dia a dia');
     window.XLSX.writeFile(wb, 'gestorq_perda_x_venda_' + pv.de + '_' + pv.ate + '.xlsx');
   }
@@ -551,15 +555,23 @@
     else if (a === 'pend') {
       if (!window.GQ51) return;
       var cod = b.getAttribute('data-cod'), o = calcular(pv.de, pv.ate, pv.setor).lista.filter(function(x){ return x.codigo === cod; })[0]; if (!o) return;
+      var jaExiste = window.GQ51.getAcoes().some(function(x){ return x && x.status !== 'concluida' && String(x.what || '').indexOf('Reduzir perda de ' + o.produto) === 0; });
+      if (jaExiste) { notify('ℹ️ Já existe uma pendência aberta para ' + o.produto + '.', 'info'); b.disabled = true; b.textContent = '✓ Já existe'; return; }
       window.GQ51.novaAcao({ what: 'Reduzir perda de ' + o.produto + ' (' + brl(o.perda) + ', quebra ' + pctFmt(o.quebra) + ')', why: o.sug, where: o.setor, when: addDias(iso(new Date()), 3), prioridade: o.quebra >= 20 ? 'alta' : 'media', origem: 'perdas' });
       notify('✅ Pendência criada para ' + o.produto + '.', 'success'); b.disabled = true; b.textContent = '✓ Criada';
     }
   }
+  function onInput(e){
+    var el = e.target; if (el.getAttribute('data-f') !== 'busca') return;
+    var q = normH(el.value); pv.busca = el.value;
+    Array.prototype.forEach.call(document.querySelectorAll('#pagePerdaVenda .gq52-tbl tbody tr'), function(tr){ tr.style.display = !q || (tr.getAttribute('data-b') || '').indexOf(q) >= 0 ? '' : 'none'; });
+  }
   function onChange(e){
+    if (e.target.getAttribute('data-f') === 'busca') return;
     var el = e.target, f = el.getAttribute('data-f');
-    if (el.id === 'gq52File' && el.files && el.files[0]) { if (!veFin()) return; return lerArquivo(el.files[0], abrirConferencia); }
+    if (el.id === 'gq52File' && el.files && el.files[0]) return lerArquivo(el.files[0], abrirConferencia);
     if (!f) return;
-    if (f === 'meta') { var c = cfg(), v = num(el.value); if (!(v > 0 && v < 100)) return; if (pv.setor) c.metas[pv.setor] = v; else c.metaPadrao = v; saveLocal(KC, c); }
+    if (f === 'meta') { var c = cfg(), v = num(el.value); if (!(v > 0 && v < 100)) { notify('A meta deve ser maior que 0 e menor que 100%.', 'warning'); return render(); } if (pv.setor) c.metas[pv.setor] = v; else c.metaPadrao = v; saveLocal(KC, c); }
     else if (f === 'de' || f === 'ate') { if (/^\d{4}-\d{2}-\d{2}$/.test(el.value)) pv[f] = el.value; if (pv.de > pv.ate) { var t = pv.de; pv.de = pv.ate; pv.ate = t; } }
     else pv[f] = el.value;
     render();

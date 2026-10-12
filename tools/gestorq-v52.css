@@ -30,3 +30,5 @@ html:not([data-theme="dark"]) .gq52-qA { color: #b91c1c; } html:not([data-theme=
   .gq52-quad { grid-template-columns: 1fr 1fr; }
   .gq52-chart { height: 300px; }
 }
+.gq52-dica { display: none; font-size: .74rem; color: var(--gq-text-2); margin: 0 0 6px; }
+@media (max-width: 900px) { .gq52-dica { display: block; } }

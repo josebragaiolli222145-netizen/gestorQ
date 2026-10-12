@@ -1,5 +1,64 @@
 # Changelog
 
+## v52: Perda x Venda
+
+Feita a partir da planilha real (abas PERDAS e VENDAS). Fica numa camada nova (`gestorq-v52`).
+
+### Importação com conferência (substitui o "Importar XLSX" da aba Perdas)
+- **Lê as duas abas:** PERDAS e VENDAS, que agora são cruzadas pelo **código** do produto.
+- **Relatório de conferência antes de gravar:**
+  - datas com ano errado ("0026" → 2026; podem ser corrigidas ou ignoradas);
+  - lançamentos em dobro;
+  - produtos cuja perda vale mais que o preço de venda (unidade ou preço a conferir);
+  - perdas de produtos sem venda no período;
+  - dias com venda e sem perda lançada;
+  - linhas ignoradas.
+- **Setor pelo nome:** usa a coluna NOME/DEPARTAMENTO ("Hortifrutigranjeiro" em vez de "127").
+- **Unidade:** usa a coluna Função (KG/UN), e kg e unidades não são mais somados juntos.
+- **Motivo:** dá para escolher o motivo dos lançamentos que vêm sem essa coluna.
+- **Mescla em vez de apagar:** o importador antigo substituía todas as perdas pelas do arquivo novo. Agora a importação mescla, e reimportar o mesmo arquivo não duplica nada.
+- **Quem não é da gestão** importa as perdas normalmente, mas sem ver valores em R$ e sem mexer em faturamento ou pendências.
+
+### Página "Perda x Venda" (menu Gestão; também pelo botão na aba Perdas)
+- **Indicadores do período:**
+  - quebra do período (perda ÷ (venda + perda)), comparada à meta e ao período anterior;
+  - perdas, com kg e unidades separados;
+  - vendas;
+  - **venda que deixou de acontecer**;
+  - concentração (quantos produtos somam 80% da perda);
+  - dias sem lançamento.
+- **Matriz de decisão:** venda × quebra, com 4 quadrantes:
+  - Atacar (vende muito e perde muito);
+  - Rever compra ou mix (vende pouco e perde muito);
+  - Referência (vende muito e perde pouco);
+  - Acompanhar (vende pouco e perde pouco).
+- **Dia a dia:** vendas, perdas e quebra. Os dias sem lançamento de perda aparecem destacados.
+- **Quebra por produto:** com quadrante, comparação com o período anterior, alerta de preço suspeito e **sugestão de compra** (quanto comprar por dia, calculado a partir da venda média). Tem busca enquanto digita e ordenação, e cada produto tem um botão "+ Pendência" que não cria pendências duplicadas.
+- **Metas:** meta de quebra por setor; com "Todos", vale a meta ponderada.
+- **Exportação para Excel:** todos os produtos e o dia a dia.
+
+### Integração com o que já existia
+- **Faturamento:** as vendas importadas viram o faturamento do setor em Indicadores. Valores digitados à mão não são sobrescritos.
+- **Pendências:** são criadas automaticamente para os 5 produtos com maior perda, no Plano de ação.
+- **Relatório para Compras:** ganhou a seção "Quebra acima da meta".
+
+### Correções em funções que já existiam
+- **Perdas em dobro no painel:** o painel de Perdas duplicava lançamentos quando módulos antigos gravavam o mesmo setor com nomes diferentes ("Hortifrutigranjeiro" × "FLV", "Açougue" × "AÇOUGUE").
+- **Plano de ação:** a página abria mostrando 0/0/0 até ser atualizada.
+- **Faixa "IA operacional":** aparecia sem estilo.
+- **Modais:** ficavam com o título escondido sob a barra do topo.
+
+### Revisão da equipe
+- **Segurança:**
+  - uma planilha com o código `__proto__` podia contaminar os objetos do app e abrir caminho para injeção de código (corrigido; testado com uma planilha maliciosa);
+  - importação e valores agora respeitam a permissão financeira;
+  - o motivo passou a fazer parte da deduplicação, para não juntar lançamentos diferentes.
+- **QA:**
+  - tabelas ilegíveis no tema claro;
+  - colunas sobrepostas;
+  - números quebrados no celular;
+  - totais da conferência agora já descontam os lançamentos em dobro.
+
 ## v51: melhorias da análise de mercado
 
 Todas as mudanças ficam numa camada nova (`gestorq-v51`), separada do código antigo. Ela usa os mesmos dados do app (vencidos, plano de ação 5W2H, temperatura e perdas) e guarda o que é novo em chaves `gq51_*`.

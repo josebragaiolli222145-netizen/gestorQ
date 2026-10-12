@@ -206,11 +206,28 @@ body.gq51-on #qx-fab-diag { display: none !important; }
 .gq-strip b { color: #6ee7b7 !important; }
 html:not([data-theme="dark"]) .gq-strip { background: #ecfdf5 !important; border-color: #10b981 !important; color: #065f46 !important; }
 html:not([data-theme="dark"]) .gq-strip b { color: #047857 !important; }
+/* Tabelas v51/v52: o tema antigo força table-layout:fixed e cor clara nas células */
+#mainScroll table.gq-tbl { table-layout: auto !important; }
+#mainScroll .gq-tbl tbody td, #mainScroll .gq-tbl tbody td b:not([style]), #mainScroll .gq-tbl tbody td strong:not([style]) { color: var(--gq-text) !important; background: transparent !important; }
+#mainScroll .gq-tbl tbody td b[style*="--gq-danger"] { color: var(--gq-danger) !important; } #mainScroll .gq-tbl tbody td b[style*="--gq-ok"] { color: var(--gq-ok) !important; }
+#mainScroll .gq-tbl thead th { color: var(--gq-text-2) !important; background: transparent !important; }
+#mainScroll .gq-tbl td.n, #mainScroll .gq-tbl th.n { white-space: nowrap; }
+/* Valores nos cartões nunca quebram no meio */
+.gq-kpi .v { white-space: nowrap; font-size: clamp(1.05rem, 4.4vw, 1.55rem); }
+/* Modais acima de tudo (inclusive a barra do topo) e com rolagem a partir do topo */
+.gq-ov, .qx50-ov { z-index: 2147483000 !important; align-items: flex-start !important; overflow-y: auto; }
+.gq-ov .gq-modal { margin: 16px auto; max-height: none; }
+/* Faixa "IA operacional" de uma camada antiga aparecia sem estilo */
+.q30-section-title { display: flex; align-items: center; gap: 8px; } .q30-section-title h4 { margin: 0; }
+.q30-badge { font-size: .68rem; font-weight: 800; padding: 2px 8px; border-radius: 999px; background: var(--gq-primary); color: #fff; }
+.q30-mini { font-size: .8rem; color: var(--gq-text-2); margin: 4px 0 8px; } .q30-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.q30-actions button { border: 1px solid var(--gq-border); background: var(--gq-surface-2); color: var(--gq-text); border-radius: 10px; padding: 7px 12px; font-weight: 700; cursor: pointer; }
 @media (max-width: 900px) {
   .gq-kpis { grid-template-columns: 1fr 1fr; }
   .gq-grid2 { grid-template-columns: 1fr; }
   .gq-kpi .v { font-size: 1.3rem; }
 }
 @media (max-width: 420px) { .gq-task { flex-wrap: wrap; } }
+@media (max-width: 480px) { .gq-kpi .v { font-size: 1.08rem !important; } .gq-kpi { padding: 12px !important; } }
 @media print { #gq51Hoje, #gq51Agir { display: none !important; } }
 </style>
