@@ -33,8 +33,17 @@ ATUALIZAR
 - Baixe o novo ZIP e rode o Instalar.bat de novo. Os dados são mantidos.
 
 DESINSTALAR
-- Menu Iniciar > "Desinstalar GestorQ". Os dados continuam guardados na
-  pasta de dados; apague-a manualmente se quiser remover tudo.
+- Menu Iniciar > "Desinstalar GestorQ". Ele pergunta se você também quer apagar
+  os dados (banco, backups e perfil do navegador do app).
+
+SEGURANÇA E PRIVACIDADE (LGPD)
+- O servidor só aceita conexões deste computador e de quem abre o app pelo
+  atalho (token guardado na pasta de dados do seu usuário do Windows).
+- Em computador com várias contas do Windows, cada conta tem o seu GestorQ e os
+  seus dados; uma conta não acessa a outra.
+- O arquivo gestorq.db e os backups contêm dados pessoais e as senhas (com hash
+  PBKDF2). Não envie esses arquivos para outras pessoas.
+- Backups guardam até 30 dias de histórico, inclusive dados já excluídos no app.
 
 RELATÓRIOS FORA DO APP
 - O arquivo gestorq.db pode ser aberto no "DB Browser for SQLite", no Excel/

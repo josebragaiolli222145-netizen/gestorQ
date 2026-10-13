@@ -66,8 +66,9 @@ def montar_frontend(nm, destino, versao):
     # 1b) O app força o modo nuvem (Firebase) sempre que não está em file://.
     #     No desktop o banco é local: as mesmas regras passam a tratar o app como
     #     local, a menos que o usuário escolha "Online (Firebase)" no login.
+    # Atenção: file:/desktop decide só o modo local x nuvem. Não use para controle de segurança.
     n = html.count("window.location.protocol === 'file:'")
-    assert n >= 5, 'regras de modo local não encontradas'
+    assert n == 5, 'esperadas 5 regras de modo local, encontradas %d (revisar antes de trocar)' % n
     html = html.replace("window.location.protocol === 'file:'", "(window.location.protocol === 'file:' || window.GQ_DESKTOP_LOCAL === true)")
     # 2) fonte Inter local (reserva quando não há internet)
     css = []

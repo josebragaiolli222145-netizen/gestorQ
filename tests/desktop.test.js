@@ -20,7 +20,8 @@ const PLANILHA = process.env.PLANILHA; // opcional: planilha real com abas PERDA
   const dados = path.join(home, '.local/share/gestorq/dados');
   const res = [];
   const ok = (n, c, extra) => { res.push([n, !!c]); console.log((c ? '✔ ' : '✘ ') + n + (extra ? '  (' + extra + ')' : '')); };
-  ok('instalação e servidor no ar', /^http:\/\/127\.0\.0\.1:\d+\/$/.test(url), url);
+  ok('instalação e servidor no ar', /^http:\/\/127\.0\.0\.1:\d+\/#t=[0-9a-f]{48}$/.test(url), url.replace(/#t=.*/, '#t=…'));
+  const base = url.split('#')[0];
 
   const browser = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
   const errors = [], net = [];
@@ -29,8 +30,8 @@ const PLANILHA = process.env.PLANILHA; // opcional: planilha real com abas PERDA
     const page = await ctx.newPage();
     page.on('pageerror', e => errors.push(e.message));
     page.on('dialog', d => d.accept().catch(() => {}));
-    page.on('request', r => { if (!r.url().startsWith(url) && !/fonts\.(googleapis|gstatic)\.com/.test(r.url())) net.push(r.url()); });
-    await page.route(u => !String(u).startsWith(url), r => r.abort()); // simula computador sem internet
+    page.on('request', r => { if (!r.url().startsWith(base) && !/fonts\.(googleapis|gstatic)\.com/.test(r.url())) net.push(r.url()); });
+    await page.route(u => !String(u).startsWith(base), r => r.abort()); // simula computador sem internet
     await page.goto(url, { waitUntil: 'load' });
     await page.waitForTimeout(3500);
     return { ctx, page };
@@ -73,11 +74,15 @@ const PLANILHA = process.env.PLANILHA; // opcional: planilha real com abas PERDA
   ok('dados voltam do banco num navegador zerado', await page.evaluate(() => (JSON.parse(localStorage.getItem('vencidosData') || '[]')).some(p => p.nome === 'Teste Desktop Iogurte')));
   await ctx.close();
   ok('backup automático criado', fs.readdirSync(path.join(dados, 'backups')).some(f => f.endsWith('.db')));
-  const r401 = await fetch(url + 'api/storage').then(r => r.status);
+  const r401 = await fetch(base + 'api/storage').then(r => r.status);
+  const semToken = await (async () => { const c = await browser.newContext(); const p = await c.newPage(); await p.route(u => !String(u).startsWith(base), r => r.abort()); await p.goto(base); await p.waitForTimeout(1500); const t = await p.evaluate(() => (document.getElementById('gqDesktopBloqueio') || {}).innerText || ''); await c.close(); return t; })();
+  ok('sem o atalho (sem token) o app não abre os dados', /atalho/.test(semToken));
+  const hdr = await fetch(base).then(r => r.headers.get('x-frame-options'));
+  ok('proteção contra iframe', hdr === 'DENY');
   ok('API recusa acesso sem token', r401 === 401);
   ok('nenhum acesso à internet', net.length === 0, net.slice(0, 3).join(' '));
   ok('nenhum erro de JavaScript', errors.length === 0, errors.slice(0, 3).join(' | '));
   await browser.close();
-  try { await fetch(url + 'api/health'); execFileSync('pkill', ['-f', path.join(home, '.local/share/gestorq/programa/runtime/node')]); } catch (e) {}
+  try { await fetch(base + 'api/health'); execFileSync('pkill', ['-f', path.join(home, '.local/share/gestorq/programa/runtime/node')]); } catch (e) {}
   process.exit(res.every(r => r[1]) ? 0 : 1);
 })().catch(e => { console.error(e); process.exit(1); });

@@ -54,6 +54,10 @@ const ESQUEMA = [
     SELECT p.mes, p.codigo, p.produto, p.setor, ROUND(p.perda, 2) AS perda, ROUND(COALESCE(v.venda, 0), 2) AS venda,
            ROUND(100.0 * p.perda / (p.perda + COALESCE(v.venda, 0)), 2) AS quebra_pct, p.qtd_perdida, v.qtd_vendida
     FROM p LEFT JOIN v ON v.mes = p.mes AND v.codigo = p.codigo;
+  `,
+  /* v2 */ `
+  CREATE TABLE IF NOT EXISTS meta (chave TEXT PRIMARY KEY, valor TEXT);
+  INSERT OR IGNORE INTO meta (chave, valor) SELECT 'inicializado', datetime('now') WHERE EXISTS (SELECT 1 FROM kv);
   `
 ];
 
@@ -98,7 +102,8 @@ const PROJECOES = {
     linha: r => [txt(r.username), txt(r.name || r.nome), txt(r.role), txt(r.filial), r.ativo === false || r.active === false || r.bloqueado ? 0 : 1] }
 };
 function projetar(db, chave, valor) {
-  const p = PROJECOES[chave]; if (!p) return;
+  if (!Object.prototype.hasOwnProperty.call(PROJECOES, chave)) return;
+  const p = PROJECOES[chave];
   db.prepare('DELETE FROM ' + p.tabela).run();
   if (valor == null) return;
   const ins = db.prepare('INSERT INTO ' + p.tabela + ' (' + p.colunas.join(',') + ') VALUES (' + p.colunas.map(() => '?').join(',') + ')');
@@ -124,11 +129,13 @@ function gravar(db, corpo) {
       projetar(db, k, String(set[k]));
     }
     for (const k of remove) { if (typeof k !== 'string') continue; removidas += del.run(k).changes; projetar(db, k, null); }
+    db.prepare("INSERT OR IGNORE INTO meta (chave, valor) VALUES ('inicializado', ?)").run(agora);
     db.exec('COMMIT');
   } catch (e) { db.exec('ROLLBACK'); throw e; }
   return { gravadas, removidas };
 }
 
+function inicializado(db) { return !!db.prepare("SELECT 1 FROM meta WHERE chave = 'inicializado'").get(); }
 function resumo(db) {
   const out = {};
   for (const t of ['kv', 'perdas', 'vendas', 'vencidos', 'acoes', 'temperaturas', 'destinos', 'usuarios']) out[t] = db.prepare('SELECT COUNT(*) AS n FROM ' + t).get().n;
@@ -144,8 +151,7 @@ function quebraProduto(db, de, ate) {
     FROM p LEFT JOIN v ON v.codigo = p.codigo ORDER BY p.perda DESC`).all(de, ate, de, ate);
 }
 function backup(db, destino) {
-  const esc = destino.replace(/'/g, "''");
-  db.exec("VACUUM INTO '" + esc + "'");
+  db.prepare('VACUUM INTO ?').run(destino);
 }
 
-module.exports = { abrir, lerTudo, gravar, resumo, perdasMensal, quebraProduto, backup };
+module.exports = { abrir, inicializado, lerTudo, gravar, resumo, perdasMensal, quebraProduto, backup };

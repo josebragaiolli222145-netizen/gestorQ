@@ -8,10 +8,12 @@ $Log     = Join-Path $Base 'instalacao_log.txt'
 New-Item -ItemType Directory -Force -Path $Destino, $Dados | Out-Null
 function Log($m) { $l = (Get-Date -Format 'dd/MM/yyyy HH:mm:ss') + '  ' + $m; Add-Content -Path $Log -Value $l -Encoding UTF8; Write-Host "  $m" }
 try {
+  if (-not $env:LOCALAPPDATA -or -not $Destino.EndsWith('\Programs\GestorQ')) { throw 'pasta de instalacao invalida' }
+  if (-not (Test-Path (Join-Path $Origem 'server\server.js')) -or -not (Test-Path (Join-Path $Origem 'runtime\node.exe'))) { throw 'pacote incompleto: extraia o ZIP inteiro' }
   Log "Instalando a partir de: $Origem"
 
   # 1) Fecha um GestorQ que esteja aberto (servidor antigo usando os arquivos)
-  Get-Process -Name node -ErrorAction SilentlyContinue | Where-Object { $_.Path -and $_.Path.StartsWith($Destino, [StringComparison]::OrdinalIgnoreCase) } | ForEach-Object {
+  Get-Process -Name node -ErrorAction SilentlyContinue | Where-Object { $_.Path -and $_.Path.StartsWith($Destino + '\', [StringComparison]::OrdinalIgnoreCase) } | ForEach-Object {
     Log "Encerrando servidor antigo (PID $($_.Id))"; Stop-Process -Id $_.Id -Force
   }
   Start-Sleep -Milliseconds 500

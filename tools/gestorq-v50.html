@@ -146,7 +146,6 @@ body.qx50-auth #qxQuickActions { right: 84px !important; bottom: calc(16px + env
   function isAdmin(){ var u = curUser(); return !!u && /^(admin|administrador)$/i.test(String(u.role || '')); }
 
   async function sha256(txt){
-    if (typeof window.hashPassword === 'function') return window.hashPassword(txt);
     var buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(txt));
     return Array.from(new Uint8Array(buf)).map(function(b){ return b.toString(16).padStart(2,'0'); }).join('');
   }
@@ -217,7 +216,7 @@ body.qx50-auth #qxQuickActions { right: 84px !important; bottom: calc(16px + env
       if (p1 !== p2) { err.textContent = 'As senhas não conferem.'; return; }
       var users = getUsers();
       var idx = users.findIndex(function(x){ return String(x.username || '').toLowerCase().trim() === 'admin'; });
-      var rec = { id: 'admin', username: 'admin', name: 'Administrador', role: 'admin', active: true, bloqueado: false, password: await sha256(p1) };
+      var rec = { id: 'admin', username: 'admin', name: 'Administrador', role: 'admin', active: true, bloqueado: false, password: (typeof window.hashPassword === 'function' ? await window.hashPassword(p1) : await sha256(p1)) };
       if (idx >= 0) users[idx] = Object.assign({}, users[idx], rec); else users.unshift(rec);
       saveUsers(users);
       ['loginFails_admin', 'loginLock_admin', 'loginLockUntil_admin'].forEach(function(k){ localStorage.removeItem(k); });

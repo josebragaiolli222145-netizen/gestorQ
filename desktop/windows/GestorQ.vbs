@@ -27,8 +27,18 @@ If Not Saudavel(porta) Then
   WScript.Quit 1
 End If
 
-url = "http://127.0.0.1:" & porta & "/"
+url = "http://127.0.0.1:" & porta & "/#t=" & LerToken()
 AbrirJanela url
+
+Function LerToken()
+  Dim f
+  LerToken = ""
+  If fso.FileExists(dados & "\token") Then
+    Set f = fso.OpenTextFile(dados & "\token", 1)
+    LerToken = Trim(f.ReadAll)
+    f.Close
+  End If
+End Function
 
 Function LerPorta()
   Dim f, t
@@ -50,7 +60,8 @@ Function Saudavel(p)
   x.open "GET", "http://127.0.0.1:" & p & "/api/health", False
   x.send
   If Err.Number = 0 Then
-    If x.status = 200 And InStr(x.responseText, """gestorq""") > 0 Then Saudavel = True
+    ' precisa ser o GestorQ DESTE usuário do Windows (outra conta pode ter o seu na mesma porta)
+    If x.status = 200 And InStr(x.responseText, """gestorq""") > 0 And InStr(1, x.responseText, """dono"":""" & sh.ExpandEnvironmentStrings("%USERNAME%") & """", vbTextCompare) > 0 Then Saudavel = True
   End If
   Err.Clear
   On Error GoTo 0

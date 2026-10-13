@@ -8,6 +8,7 @@ DADOS="$HOME/.local/share/gestorq/dados"
 echo "Instalando o GestorQ Desktop..."
 pkill -f "$DESTINO/runtime/node" 2>/dev/null || true
 mkdir -p "$DESTINO" "$DADOS" "$HOME/.local/share/applications"
+chmod 700 "$HOME/.local/share/gestorq" "$DADOS"
 rm -rf "$DESTINO"; mkdir -p "$DESTINO"
 cp -a "$ORIGEM/." "$DESTINO/"
 chmod +x "$DESTINO/gestorq.sh" "$DESTINO/runtime/node"
@@ -16,7 +17,7 @@ cat > "$HOME/.local/share/applications/gestorq.desktop" <<DESK
 Type=Application
 Name=GestorQ
 Comment=Gestão de Qualidade e Perdas
-Exec=$DESTINO/gestorq.sh
+Exec="$DESTINO/gestorq.sh"
 Icon=$DESTINO/gestorq.png
 Terminal=false
 Categories=Office;

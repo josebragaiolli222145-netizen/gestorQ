@@ -168,6 +168,83 @@ sub("""                document.getElementById('authWrap').classList.remove('gon
 sub("var sig = [r.data,r.codigo,r.produto,r.departamento,r.motivo,r.quantidade,r.valor].join('|');",
     "var sig = [r.data,String(r.codigo||'').replace(/^0+(?=\\d)/,''),String(r.produto||'').trim().toUpperCase(),Number(r.quantidade).toFixed(3),Number(r.valor).toFixed(2),String(r.motivo||'Não informado').trim().toUpperCase()].join('|');")
 
+# 10f) Senhas: PBKDF2-SHA256 (210 mil iterações, salt por usuário) no lugar de
+#      SHA-256 puro, e fim do "pass-the-hash" (o próprio hash era aceito como
+#      senha pela regra de texto plano legado). Senhas antigas continuam
+#      valendo e são migradas no próximo login.
+_a = html.index("        async function hashPassword(pass) {")
+_b = html.index("            return matched;\n        }", _a) + len("            return matched;\n        }")
+assert 'async function verifyPassword(inputPass, storedPass, username)' in html[_a:_b]
+html = html[:_a] + """        var PBKDF2_ITER = 210000;
+        function _b64(buf){ var s = '', a = new Uint8Array(buf); for (var i = 0; i < a.length; i++) s += String.fromCharCode(a[i]); return btoa(s); }
+        function _unb64(t){ var s = atob(t), a = new Uint8Array(s.length); for (var i = 0; i < s.length; i++) a[i] = s.charCodeAt(i); return a; }
+        async function _pbkdf2(pass, salt, iter){
+            var key = await crypto.subtle.importKey('raw', new TextEncoder().encode(pass), 'PBKDF2', false, ['deriveBits']);
+            return crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt: salt, iterations: iter }, key, 256);
+        }
+        async function _sha256hex(pass){
+            var buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(pass));
+            return Array.from(new Uint8Array(buf)).map(function(b){ return b.toString(16).padStart(2,'0'); }).join('');
+        }
+        // Formato: pbkdf2$<iterações>$<salt base64>$<hash base64>
+        async function hashPassword(pass) {
+            try {
+                var salt = crypto.getRandomValues(new Uint8Array(16));
+                var bits = await _pbkdf2(pass, salt, PBKDF2_ITER);
+                return 'pbkdf2$' + PBKDF2_ITER + '$' + _b64(salt) + '$' + _b64(bits);
+            } catch(e) {
+                return 'fb_' + btoa(unescape(encodeURIComponent(pass))).replace(/=/g,'');
+            }
+        }
+
+        // Verificar senha (aceita os formatos antigos e migra para PBKDF2)
+        async function verifyPassword(inputPass, storedPass, username) {
+            if (!storedPass || !inputPass) return false;
+            storedPass = String(storedPass);
+            var matched = false, needsMigration = false;
+            var pareceHash = /^[0-9a-f]{64}$/i.test(storedPass) || storedPass.indexOf('pbkdf2$') === 0 || storedPass.indexOf('fb_') === 0 || storedPass.indexOf('MIGRAR_') === 0;
+            // 1. PBKDF2 (formato atual)
+            if (storedPass.indexOf('pbkdf2$') === 0) {
+                try {
+                    var p = storedPass.split('$');
+                    var calc = _b64(await _pbkdf2(inputPass, _unb64(p[2]), parseInt(p[1], 10)));
+                    var dif = calc.length ^ p[3].length;
+                    for (var i = 0; i < calc.length && i < p[3].length; i++) dif |= calc.charCodeAt(i) ^ p[3].charCodeAt(i);
+                    matched = dif === 0;
+                } catch(e) {}
+                return matched;
+            }
+            // 2. SHA-256 sem salt (versões anteriores)
+            if (/^[0-9a-f]{64}$/i.test(storedPass)) {
+                try { if ((await _sha256hex(inputPass)) === storedPass.toLowerCase()) { matched = true; needsMigration = true; } } catch(e) {}
+            }
+            // 3. Formato MIGRAR_ (base64 simples)
+            if (!matched && storedPass.indexOf('MIGRAR_') === 0) {
+                try { if (atob(storedPass.replace('MIGRAR_', '')) === inputPass) { matched = true; needsMigration = true; } } catch(e) {}
+            }
+            // 4. Fallback btoa
+            if (!matched && storedPass.indexOf('fb_') === 0) {
+                try { if ('fb_' + btoa(unescape(encodeURIComponent(inputPass))).replace(/=/g,'') === storedPass) { matched = true; needsMigration = true; } } catch(e) {}
+            }
+            // 5. Texto plano legado — nunca quando o valor guardado já é um hash
+            //    (senão o próprio hash, copiado do banco, funcionaria como senha)
+            if (!matched && !pareceHash && inputPass === storedPass) { matched = true; needsMigration = true; }
+            // Migração automática para PBKDF2
+            if (matched && needsMigration) {
+                try {
+                    var hsh = await hashPassword(inputPass);
+                    if (hsh.indexOf('pbkdf2$') === 0) {
+                        var usrs = JSON.parse(localStorage.getItem('users') || '[]');
+                        var idx = usrs.findIndex(function(u){ return username ? u.username === username : u.password === storedPass; });
+                        if (idx >= 0) { usrs[idx].password = hsh; localStorage.setItem('users', JSON.stringify(usrs)); }
+                    }
+                } catch(e) {}
+            }
+            return matched;
+        }""" + html[_b:]
+sub("""              var hashed = await hashPassword(pass);
+              loginOk = (hashed === _ac.password);""", """              loginOk = await verifyPassword(pass, _ac.password);""")
+
 # 11) Marca única: relatórios impressos e manifesto diziam "Qualtrix"
 import re as _re
 _n = 0

@@ -13,6 +13,7 @@ const http = require('node:http');
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
+const os = require('node:os');
 const db = require('./db');
 
 const VERSAO = require('./versao.json').versao;
@@ -24,10 +25,18 @@ const APP_DIR = path.join(RAIZ, 'app');
 const DADOS = path.resolve(arg('dados', process.env.GESTORQ_DADOS || path.join(RAIZ, 'dados')));
 const PORTA_BASE = parseInt(arg('porta', process.env.GESTORQ_PORTA || '8741'), 10);
 const OCIOSO_MS = parseInt(arg('ocioso-min', '15'), 10) * 60 * 1000;
-const TOKEN = crypto.randomBytes(24).toString('hex');
 const LIMITE_CORPO = 60 * 1024 * 1024;
+const DONO = (() => { try { return os.userInfo().username; } catch (e) { return ''; } })();
 
-for (const d of [DADOS, path.join(DADOS, 'logs'), path.join(DADOS, 'backups')]) fs.mkdirSync(d, { recursive: true });
+// Arquivos e pastas criados só com permissão do próprio usuário (Linux/macOS)
+try { process.umask(0o077); } catch (e) {}
+for (const d of [DADOS, path.join(DADOS, 'logs'), path.join(DADOS, 'backups')]) fs.mkdirSync(d, { recursive: true, mode: 0o700 });
+// Token fixo por instalação, guardado num arquivo que só o dono lê.
+// Não vai dentro da página: o atalho abre o app com #t=<token>.
+const TOKEN_ARQ = path.join(DADOS, 'token');
+let TOKEN = '';
+try { TOKEN = fs.readFileSync(TOKEN_ARQ, 'utf8').trim(); } catch (e) {}
+if (!/^[0-9a-f]{48}$/.test(TOKEN)) { TOKEN = crypto.randomBytes(24).toString('hex'); fs.writeFileSync(TOKEN_ARQ, TOKEN, { mode: 0o600 }); }
 const LOG = path.join(DADOS, 'logs', 'servidor.log');
 function log(...m) {
   const linha = new Date().toISOString() + ' ' + m.join(' ') + '\n';
@@ -63,21 +72,23 @@ function servirArquivo(req, res, urlPath) {
   if (!alvo.startsWith(APP_DIR + path.sep)) return responder(res, 403, { erro: 'acesso negado' });
   if (rel === '/index.html') {
     if (!indexCache) indexCache = fs.readFileSync(alvo, 'utf8');
-    const html = indexCache.replace('__GESTORQ_TOKEN__', TOKEN).replace('__GESTORQ_VERSAO__', VERSAO);
-    res.writeHead(200, { 'Content-Type': MIME['.html'], 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'no-referrer' });
+    const html = indexCache.replace('__GESTORQ_VERSAO__', VERSAO);
+    res.writeHead(200, Object.assign({ 'Content-Type': MIME['.html'], 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer' }, SEG));
     return res.end(html);
   }
   fs.stat(alvo, (err, st) => {
     if (err || !st.isFile()) return responder(res, 404, { erro: 'não encontrado' });
-    res.writeHead(200, { 'Content-Type': MIME[path.extname(alvo).toLowerCase()] || 'application/octet-stream', 'Cache-Control': 'max-age=3600', 'X-Content-Type-Options': 'nosniff' });
+    res.writeHead(200, Object.assign({ 'Content-Type': MIME[path.extname(alvo).toLowerCase()] || 'application/octet-stream', 'Cache-Control': 'max-age=3600' }, SEG));
     fs.createReadStream(alvo).pipe(res);
   });
 }
 
 /* ── Utilidades HTTP ──────────────────────────────────────────────── */
+// Cabeçalhos de segurança: impede abrir o app dentro de outro site (iframe)
+const SEG = { 'X-Content-Type-Options': 'nosniff', 'X-Frame-Options': 'DENY', 'Content-Security-Policy': "frame-ancestors 'none'" };
 function responder(res, status, obj) {
   const corpo = JSON.stringify(obj);
-  res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' });
+  res.writeHead(status, Object.assign({ 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' }, SEG));
   res.end(corpo);
 }
 function lerCorpo(req) {
@@ -91,12 +102,14 @@ function lerCorpo(req) {
 
 /* ── API ──────────────────────────────────────────────────────────── */
 async function api(req, res, rota, porta) {
-  if (rota === '/api/health') return responder(res, 200, { ok: true, app: 'gestorq', versao: VERSAO, pid: process.pid });
-  // Só o próprio app (que recebeu o token na página) pode usar a API.
-  if (req.headers['x-gestorq-token'] !== TOKEN) return responder(res, 401, { erro: 'token inválido' });
+  const tokenOk = req.headers['x-gestorq-token'] === TOKEN;
+  if (tokenOk) ultimoUso = Date.now();   // só o próprio app mantém o servidor ligado
+  if (rota === '/api/health') return responder(res, 200, { ok: true, app: 'gestorq', versao: VERSAO, dono: DONO });
+  // Só o próprio app (aberto pelo atalho, que conhece o token) pode usar a API.
+  if (!tokenOk) return responder(res, 401, { erro: 'token inválido' });
   if (req.method === 'POST' && !String(req.headers['content-type'] || '').startsWith('application/json')) return responder(res, 415, { erro: 'use application/json' });
 
-  if (rota === '/api/storage' && req.method === 'GET') return responder(res, 200, { chaves: db.lerTudo(banco) });
+  if (rota === '/api/storage' && req.method === 'GET') return responder(res, 200, { chaves: db.lerTudo(banco), inicializado: db.inicializado(banco) });
   if (rota === '/api/storage' && req.method === 'POST') {
     const corpo = await lerCorpo(req);
     const r = db.gravar(banco, corpo);
@@ -118,7 +131,6 @@ async function api(req, res, rota, porta) {
 let ultimoUso = Date.now();
 function criarServidor(porta) {
   return http.createServer(async (req, res) => {
-    ultimoUso = Date.now();
     // Proteção contra "DNS rebinding": só aceita Host desta máquina.
     const host = String(req.headers.host || '');
     if (host !== '127.0.0.1:' + porta && host !== 'localhost:' + porta) return responder(res, 403, { erro: 'host não permitido' });
@@ -129,7 +141,7 @@ function criarServidor(porta) {
       return servirArquivo(req, res, req.url);
     } catch (e) {
       log('ERRO', req.method, rota, e.stack || e.message);
-      if (!res.headersSent) responder(res, 500, { erro: e.message });
+      if (!res.headersSent) responder(res, 500, { erro: 'erro interno (detalhes no log do servidor)' });
     }
   });
 }
@@ -137,9 +149,9 @@ function criarServidor(porta) {
 function jaRodando(porta) {
   return new Promise(ok => {
     const r = http.get({ host: '127.0.0.1', port: porta, path: '/api/health', timeout: 800 }, res => {
-      let b = ''; res.on('data', c => b += c); res.on('end', () => { try { ok(JSON.parse(b).app === 'gestorq'); } catch (e) { ok(false); } });
+      let b = ''; res.on('data', c => b += c); res.on('end', () => { try { const j = JSON.parse(b); ok(j.app === 'gestorq' ? (String(j.dono).toLowerCase() === DONO.toLowerCase() ? 'meu' : 'outro') : 'outro'); } catch (e) { ok('outro'); } });
     });
-    r.on('error', () => ok(false)); r.on('timeout', () => { r.destroy(); ok(false); });
+    r.on('error', () => ok('livre')); r.on('timeout', () => { r.destroy(); ok('outro'); });
   });
 }
 
@@ -154,7 +166,9 @@ function encerrar() {
 
 async function iniciar() {
   for (let p = PORTA_BASE; p < PORTA_BASE + 10; p++) {
-    if (await jaRodando(p)) { log('já existe um GestorQ na porta', p); fs.writeFileSync(path.join(DADOS, 'porta.txt'), String(p)); process.exit(0); }
+    const estado = await jaRodando(p);
+    if (estado === 'meu') { log('já existe um GestorQ deste usuário na porta', p); fs.writeFileSync(path.join(DADOS, 'porta.txt'), String(p)); process.exit(0); }
+    if (estado === 'outro') continue;   // porta de outro usuário/programa: tenta a próxima
     const ok = await new Promise(res => {
       const s = criarServidor(p);
       s.once('error', () => res(false));
