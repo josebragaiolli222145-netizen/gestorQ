@@ -1,0 +1,9 @@
+GestorQ Desktop - Ubuntu/Linux
+==============================
+Instalar:   tar -xzf GestorQ-Desktop-Linux-*.tar.gz && cd GestorQ && ./instalar.sh
+Abrir:      menu de aplicativos > GestorQ (ou atalho na Área de Trabalho)
+Programa:   ~/.local/share/gestorq/programa
+Dados:      ~/.local/share/gestorq/dados  (gestorq.db, backups/, logs/)
+Desinstalar: rm -rf ~/.local/share/gestorq/programa ~/.local/share/applications/gestorq.desktop
+(Os dados ficam em ~/.local/share/gestorq/dados até você apagá-los.)
+Usa Edge/Chrome/Chromium em modo janela se estiverem instalados; senão abre no navegador padrão.

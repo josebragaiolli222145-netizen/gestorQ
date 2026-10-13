@@ -1,7 +1,8 @@
 # Instruções para o Claude
 
 - **Sempre gere e entregue o arquivo `GestorQ.html` completo** ao final de qualquer alteração: envie o arquivo ao usuário (SendUserFile) além de fazer commit/push.
-- O app é um arquivo único (`GestorQ.html`); não divida em vários arquivos sem pedido explícito.
+- O app web é um arquivo único (`GestorQ.html`); não divida em vários arquivos sem pedido explícito.
+- Versão para computador (pedido do usuário): pasta `desktop/` (servidor Node + SQLite, ponte, instaladores). Gerar com `npm install && npm run desktop` (saída em `dist/`) e testar com `npm run test:desktop`. Ao mudar o app, regenere e entregue também o pacote desktop.
 - Antes de entregar, rode `npm test` (teste de fumaça) e confirme que não há erros de JavaScript.
 - Responda em português.
 

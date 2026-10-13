@@ -3,7 +3,9 @@
   "private": true,
   "description": "GestorQ — sistema de gestão de qualidade e perdas (arquivo único GestorQ.html)",
   "scripts": {
-    "test": "node tests/smoke.js"
+    "test": "node tests/smoke.js",
+    "desktop": "python3 desktop/build_desktop.py",
+    "test:desktop": "node tests/desktop.test.js"
   },
   "devDependencies": {
     "@zxing/library": "0.19.1",
@@ -14,6 +16,7 @@
     "jszip": "3.10.1",
     "playwright": "1.56.1",
     "qrcodejs": "1.0.0",
-    "xlsx": "0.18.5"
+    "xlsx": "0.18.5",
+    "@fontsource/inter": "5.1.0"
   }
 }

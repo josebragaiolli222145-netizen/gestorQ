@@ -1,0 +1,43 @@
+GestorQ Desktop - Windows 10/11
+================================
+
+COMO INSTALAR
+1. Clique com o botão direito no arquivo ZIP > "Extrair Tudo...".
+2. Abra a pasta extraída e dê dois cliques em "Instalar.bat".
+   - Se o Windows mostrar "O Windows protegeu o computador", clique em
+     "Mais informações" > "Executar assim mesmo".
+3. Ao terminar, o GestorQ abre sozinho e aparece o atalho "GestorQ"
+   na Área de Trabalho e no Menu Iniciar.
+
+O QUE FOI INSTALADO
+- Programa:  %LOCALAPPDATA%\Programs\GestorQ   (não precisa de administrador)
+- Dados:     %LOCALAPPDATA%\GestorQ\dados
+    gestorq.db   -> banco de dados (SQLite) com todos os dados do app
+    backups\     -> cópia automática diária do banco (guarda 30 dias)
+    logs\        -> registro do servidor (para diagnóstico)
+- Nada é instalado no sistema: o Node.js vem dentro do pacote.
+
+COMO FUNCIONA
+- O atalho liga um servidor local (só o seu computador acessa) e abre o app
+  numa janela própria do Microsoft Edge (ou Chrome).
+- Tudo o que você grava no app vai para o banco de dados em menos de 1 segundo.
+- O servidor desliga sozinho 15 minutos depois que a janela do app é fechada.
+- Funciona sem internet. Internet só é necessária para: modo nuvem (Firebase),
+  leitura de texto por foto (OCR) e as fontes do Google (há fonte local reserva).
+
+TRAZER OS DADOS DA VERSÃO ANTIGA (arquivo GestorQ.html)
+1. Abra o GestorQ.html antigo no navegador > Config > Backup > Exportar.
+2. Abra o GestorQ Desktop > Config > Backup > Importar o arquivo exportado.
+
+ATUALIZAR
+- Baixe o novo ZIP e rode o Instalar.bat de novo. Os dados são mantidos.
+
+DESINSTALAR
+- Menu Iniciar > "Desinstalar GestorQ". Os dados continuam guardados na
+  pasta de dados; apague-a manualmente se quiser remover tudo.
+
+RELATÓRIOS FORA DO APP
+- O arquivo gestorq.db pode ser aberto no "DB Browser for SQLite", no Excel/
+  Power BI (via driver ODBC do SQLite) ou em Python. Tabelas: perdas, vendas,
+  vencidos, acoes, temperaturas, destinos, usuarios; visões vw_perdas_mes_setor
+  e vw_quebra_produto_mes.
