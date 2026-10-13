@@ -22,6 +22,7 @@ Pacote instalável para Windows 10/11 e Ubuntu, que funciona sem internet.
   - lançador em VBScript, com reserva em PowerShell;
   - desinstalador pergunta se apaga os dados.
 - **Instalador Ubuntu:** `instalar.sh` e `desinstalar.sh`.
+- **Pacotes menores para envio:** `.7z` no Windows (o Windows 11 abre sem programa extra) e `.tar.xz` no Linux.
 
 ## v52: Perda x Venda
 

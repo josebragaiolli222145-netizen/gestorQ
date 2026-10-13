@@ -159,6 +159,16 @@ def main():
             for f in sorted(raiz.rglob('*')):
                 if f.is_file(): z.write(f, 'GestorQ/' + f.relative_to(raiz).as_posix())
         feitos.append(destino)
+        # versão menor (< 30 MB) para envio: .7z, que o Windows 11 abre sem programa extra
+        try:
+            import py7zr
+            d7 = destino.with_suffix('.7z')
+            if d7.exists(): d7.unlink()
+            with py7zr.SevenZipFile(d7, 'w', filters=[{'id': py7zr.FILTER_LZMA2, 'preset': 9}]) as z7:
+                z7.writeall(raiz, 'GestorQ')
+            feitos.append(d7)
+        except ImportError:
+            print('  (pip install py7zr para gerar também o .7z menor)')
     if a.so in ('linux', 'ambos'):
         print('Linux:')
         raiz = saida / 'build' / 'linux' / 'GestorQ'
@@ -177,6 +187,10 @@ def main():
         with tarfile.open(destino, 'w:gz') as t:
             t.add(raiz, arcname='GestorQ')
         feitos.append(destino)
+        dxz = saida / ('GestorQ-Desktop-Linux-v%s.tar.xz' % versao)   # versão menor para envio
+        with tarfile.open(dxz, 'w:xz', preset=9) as t:
+            t.add(raiz, arcname='GestorQ')
+        feitos.append(dxz)
     for f in feitos:
         try: nome = f.resolve().relative_to(RAIZ.resolve())
         except ValueError: nome = f
