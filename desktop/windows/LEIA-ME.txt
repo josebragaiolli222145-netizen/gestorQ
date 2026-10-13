@@ -3,6 +3,8 @@ GestorQ Desktop - Windows 10/11
 
 COMO INSTALAR
 1. Clique com o botão direito no arquivo ZIP > "Extrair Tudo...".
+   Extraia em uma pasta comum (por exemplo, Downloads), não dentro de
+   %LOCALAPPDATA%\Programs\GestorQ.
 2. Abra a pasta extraída e dê dois cliques em "Instalar.bat".
    - Se o Windows mostrar "O Windows protegeu o computador", clique em
      "Mais informações" > "Executar assim mesmo".
@@ -22,6 +24,15 @@ COMO FUNCIONA
   numa janela própria do Microsoft Edge (ou Chrome).
 - Tudo o que você grava no app vai para o banco de dados em menos de 1 segundo.
 - O servidor desliga sozinho 15 minutos depois que a janela do app é fechada.
+- Use uma janela do GestorQ por vez. Se abrir uma segunda, ela mostra o botão
+  "Usar esta janela" (a anterior para de salvar, para não misturar alterações).
+- Se o VBScript estiver desativado no seu Windows, o instalador usa um lançador
+  em PowerShell automaticamente.
+
+SE DER PROBLEMA
+- "Não foi possível iniciar o GestorQ": veja dados\logs\servidor.log e o
+  arquivo %LOCALAPPDATA%\GestorQ\instalacao_log.txt.
+- Antivírus da empresa bloqueando: libere a pasta %LOCALAPPDATA%\Programs\GestorQ.
 - Funciona sem internet. Internet só é necessária para: modo nuvem (Firebase),
   leitura de texto por foto (OCR) e as fontes do Google (há fonte local reserva).
 
@@ -33,8 +44,9 @@ ATUALIZAR
 - Baixe o novo ZIP e rode o Instalar.bat de novo. Os dados são mantidos.
 
 DESINSTALAR
-- Menu Iniciar > "Desinstalar GestorQ". Ele pergunta se você também quer apagar
-  os dados (banco, backups e perfil do navegador do app).
+- Menu Iniciar > "Desinstalar GestorQ" (ou Configurações > Aplicativos >
+  Aplicativos instalados > GestorQ Desktop > Desinstalar). Ele pergunta se você
+  também quer apagar os dados (banco, backups e perfil do navegador do app).
 
 SEGURANÇA E PRIVACIDADE (LGPD)
 - O servidor só aceita conexões deste computador e de quem abre o app pelo

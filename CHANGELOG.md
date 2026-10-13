@@ -1,5 +1,28 @@
 # Changelog
 
+## GestorQ Desktop 5.2.0 (versão para computador)
+
+Pacote instalável para Windows 10/11 e Ubuntu, que funciona sem internet.
+
+- **Back-end local:**
+  - servidor Node.js embutido, sem instalar nada no sistema;
+  - acesso só deste computador e só pelo atalho (token por instalação);
+  - confere o dono do servidor, tem proteção contra iframe e desliga sozinho após 15 min sem uso.
+- **Banco de dados SQLite** (`gestorq.db`):
+  - todas as gravações do app vão para o banco em menos de 1 s;
+  - tabelas `perdas`, `vendas`, `vencidos`, `acoes`, `temperaturas`, `destinos` e `usuarios` (esta sem senhas);
+  - visões `vw_perdas_mes_setor` e `vw_quebra_produto_mes`;
+  - backup diário com 30 dias de histórico, mais backup manual.
+- **Segurança dos dados:**
+  - diário de alterações pendentes, que reenvia o que faltou se o servidor cair;
+  - só uma janela salva por vez, mesmo entre navegadores diferentes; a outra mostra "Usar esta janela".
+- **Senhas:** guardadas com PBKDF2 (210 mil iterações).
+- **Instalador Windows** (sem administrador):
+  - cria atalhos e aparece em "Aplicativos instalados";
+  - lançador em VBScript, com reserva em PowerShell;
+  - desinstalador pergunta se apaga os dados.
+- **Instalador Ubuntu:** `instalar.sh` e `desinstalar.sh`.
+
 ## v52: Perda x Venda
 
 Feita a partir da planilha real (abas PERDAS e VENDAS). Fica numa camada nova (`gestorq-v52`).

@@ -50,9 +50,12 @@ const banco = db.abrir(path.join(DADOS, 'gestorq.db'), log);
 function backup(motivo) {
   try {
     const hoje = new Date().toISOString().slice(0, 10);
+    // O backup do dia é sempre atualizado (início, a cada 6 h e ao encerrar); o manual gera um arquivo à parte.
     const destino = path.join(DADOS, 'backups', 'gestorq-' + hoje + (motivo === 'manual' ? '-' + Date.now() : '') + '.db');
-    if (motivo !== 'manual' && fs.existsSync(destino)) return null;
-    db.backup(banco, destino);
+    const tmp = destino + '.tmp';
+    try { fs.unlinkSync(tmp); } catch (e) {}
+    db.backup(banco, tmp);
+    fs.renameSync(tmp, destino);
     const lista = fs.readdirSync(path.join(DADOS, 'backups')).filter(f => /^gestorq-.*\.db$/.test(f)).sort();
     const limite = Date.now() - 30 * 86400000;
     for (const f of lista) { const p = path.join(DADOS, 'backups', f); if (fs.statSync(p).mtimeMs < limite) fs.unlinkSync(p); }
@@ -100,6 +103,19 @@ function lerCorpo(req) {
   });
 }
 
+/* ── Janela ativa ─────────────────────────────────────────────────────
+   Só uma janela (sessão) grava por vez, mesmo que estejam em navegadores
+   diferentes. A janela ativa manda sinal de vida; se sumir por 150 s, outra
+   pode assumir. "Usar esta janela" assume na hora. */
+let sessaoAtiva = { id: '', visto: 0 };
+function sessaoOk(req, assumir) {
+  const id = String(req.headers['x-gestorq-sessao'] || '');
+  if (!/^[0-9a-z]{8,64}$/i.test(id)) return false;
+  const viva = sessaoAtiva.id && Date.now() - sessaoAtiva.visto < 150000;
+  if (!viva || sessaoAtiva.id === id || assumir) { sessaoAtiva = { id, visto: Date.now() }; return true; }
+  return false;
+}
+
 /* ── API ──────────────────────────────────────────────────────────── */
 async function api(req, res, rota, porta) {
   const tokenOk = req.headers['x-gestorq-token'] === TOKEN;
@@ -109,8 +125,15 @@ async function api(req, res, rota, porta) {
   if (!tokenOk) return responder(res, 401, { erro: 'token inválido' });
   if (req.method === 'POST' && !String(req.headers['content-type'] || '').startsWith('application/json')) return responder(res, 415, { erro: 'use application/json' });
 
-  if (rota === '/api/storage' && req.method === 'GET') return responder(res, 200, { chaves: db.lerTudo(banco), inicializado: db.inicializado(banco) });
+  const assumir = new URL(req.url, 'http://x').searchParams.get('assumir') === '1';
+  if (rota === '/api/storage' && req.method === 'GET') {
+    if (!sessaoOk(req, assumir)) return responder(res, 409, { erro: 'outra janela ativa' });
+    return responder(res, 200, { chaves: db.lerTudo(banco), inicializado: db.inicializado(banco) });
+  }
+  if (rota === '/api/sessao' && req.method === 'POST') return responder(res, sessaoOk(req, assumir) ? 200 : 409, {});
+  if (rota === '/api/sessao/sair' && req.method === 'POST') { if (sessaoAtiva.id === String(req.headers['x-gestorq-sessao'] || '')) sessaoAtiva = { id: '', visto: 0 }; return responder(res, 200, {}); }
   if (rota === '/api/storage' && req.method === 'POST') {
+    if (!sessaoOk(req, false)) return responder(res, 409, { erro: 'outra janela ativa' });
     const corpo = await lerCorpo(req);
     const r = db.gravar(banco, corpo);
     return responder(res, 200, { ok: true, gravadas: r.gravadas, removidas: r.removidas });

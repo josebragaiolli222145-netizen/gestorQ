@@ -17,6 +17,9 @@
   var DIARIO = '__gq_pend';                 // chaves reservadas da ponte (não vão para o banco)
   function reservada(k){ return String(k).indexOf('__gq_') === 0; }
   window.GQ_DESKTOP = { versao: '__GESTORQ_VERSAO__', online: true };
+  // Definido antes de qualquer saída antecipada: mesmo uma janela bloqueada não deve tentar a nuvem
+  Object.defineProperty(window, 'GQ_DESKTOP_LOCAL', { configurable: true, get: function(){ try { return oGet.call(ls, 'gqDesktopNuvem') !== '1'; } catch(e){ return true; } } });
+  try { if (window.GQ_DESKTOP_LOCAL && oGet.call(ls, 'appMode') !== 'local') oSet.call(ls, 'appMode', 'local'); } catch(e){}
 
   /* Token: vem no endereço (#t=...) e fica guardado só nesta janela */
   var TOKEN = '';
@@ -58,10 +61,29 @@
   }
   if (!TOKEN) { window.GQ_DESKTOP.online = false; bloquearTela('Abra o GestorQ pelo atalho', 'Por segurança, o GestorQ só funciona quando aberto pelo atalho "GestorQ" da Área de Trabalho ou do Menu Iniciar.'); return; }
 
+  /* Sessão desta janela: o servidor só aceita gravações da janela ativa
+     (vale também entre navegadores/perfis diferentes) */
+  var SESSAO = '';
+  try { SESSAO = oGet.call(ss, 'gqSessao') || ''; } catch(e){}
+  if (!/^[0-9a-f]{32}$/.test(SESSAO)) {
+    var rnd = new Uint8Array(16); crypto.getRandomValues(rnd);
+    SESSAO = Array.prototype.map.call(rnd, function(b){ return ('0' + b.toString(16)).slice(-2); }).join('');
+    try { oSet.call(ss, 'gqSessao', SESSAO); } catch(e){}
+  }
+  function cab(json){ var h = { 'X-GestorQ-Token': TOKEN, 'X-GestorQ-Sessao': SESSAO }; if (json) h['Content-Type'] = 'application/json'; return h; }
+  function usarEstaJanela(){ try { oSet.call(ss, 'gqRoubar', '1'); } catch(e){} location.reload(); }
+  function outraJanela(){
+    window.GQ_DESKTOP.online = false;
+    bloquearTela('O GestorQ está aberto em outra janela', 'Para não misturar alterações, só uma janela salva por vez. Feche a outra janela ou clique abaixo para continuar nesta (a outra para de salvar).',
+      { texto: 'Usar esta janela', acao: usarEstaJanela });
+  }
+  var roubar = false; try { roubar = oGet.call(ss, 'gqRoubar') === '1'; oRem.call(ss, 'gqRoubar'); } catch(e){}
+
   function xhrSync(metodo, url, corpo){
     var x = new XMLHttpRequest();
     x.open(metodo, url, false);
     x.setRequestHeader('X-GestorQ-Token', TOKEN);
+    x.setRequestHeader('X-GestorQ-Sessao', SESSAO);
     if (corpo) x.setRequestHeader('Content-Type', 'application/json');
     x.send(corpo ? JSON.stringify(corpo) : null);
     return x;
@@ -70,6 +92,7 @@
   function gravarDiario(d){ try { if (Object.keys(d).length) oSet.call(ls, DIARIO, JSON.stringify(d)); else oRem.call(ls, DIARIO); } catch(e){} }
 
   /* 1) Reenvia o que ficou pendente da última vez ------------------------ */
+  if (roubar) { try { xhrSync('POST', '/api/sessao?assumir=1', {}); } catch(e){} }
   var diario = lerDiario();
   if (Object.keys(diario).length) {
     var pend0 = { set: {}, remove: [], clear: false };
@@ -79,8 +102,9 @@
 
   /* 2) Carrega do banco -------------------------------------------------- */
   var resp = null;
-  try { var r = xhrSync('GET', '/api/storage'); if (r.status === 200) resp = JSON.parse(r.responseText); else if (r.status === 401) resp = 401; } catch(e){}
+  try { var r = xhrSync('GET', '/api/storage'); if (r.status === 200) resp = JSON.parse(r.responseText); else if (r.status === 401 || r.status === 409) resp = r.status; } catch(e){}
   if (resp === 401) { window.GQ_DESKTOP.online = false; bloquearTela('Acesso expirado', 'Feche esta janela e abra o GestorQ de novo pelo atalho.'); return; }
+  if (resp === 409) { outraJanela(); return; }
   if (!resp) { window.GQ_DESKTOP.online = false; bloquearTela('Banco de dados indisponível', 'Não foi possível ler o banco de dados do GestorQ. Feche esta janela e abra o GestorQ de novo pelo atalho.'); return; }
   var dados = resp.chaves || {};
   var temLocal = false; for (var i = 0; i < ls.length; i++) { if (!reservada(ls.key(i))) { temLocal = true; break; } }
@@ -123,9 +147,10 @@
     if (enviando || !ativa || !temPend()) return;
     enviando = true;
     var p = pacote();
-    fetch('/api/storage', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-GestorQ-Token': TOKEN }, body: JSON.stringify(p) })
+    fetch('/api/storage', { method: 'POST', headers: cab(true), body: JSON.stringify(p) })
       .then(function(res){
         if (res.status === 401) { devolver(p); ativa = false; bloquearTela('Acesso expirado', 'Feche esta janela e abra o GestorQ de novo pelo atalho. As alterações pendentes serão enviadas ao reabrir.'); return; }
+        if (res.status === 409) { devolver(p); ativa = false; outraJanela(); return; }
         if (!res.ok) throw new Error('HTTP ' + res.status);
         // banco confirmou: tira do diário só o que foi enviado e não mudou de novo
         var d = lerDiario();
@@ -153,9 +178,13 @@
   };
   // Ao fechar a janela: tenta enviar o resto (o diário garante o reenvio na próxima abertura)
   window.addEventListener('pagehide', function(){
-    if (!temPend() || !ativa) return;
-    var corpo = JSON.stringify(pacote());
-    if (corpo.length < 60000) { try { fetch('/api/storage', { method: 'POST', keepalive: true, headers: { 'Content-Type': 'application/json', 'X-GestorQ-Token': TOKEN }, body: corpo }); } catch(e){} }
+    if (!ativa) return;
+    if (temPend()) {
+      var corpo = JSON.stringify(pacote());
+      if (corpo.length < 60000) { try { fetch('/api/storage', { method: 'POST', keepalive: true, headers: cab(true), body: corpo }); } catch(e){} }
+    }
+    // libera a vaga de "janela ativa" (a gravação acima chega antes por ser do mesmo endereço e enviada primeiro)
+    try { fetch('/api/sessao/sair', { method: 'POST', keepalive: true, headers: cab(true), body: '{}' }); } catch(e){}
   });
 
   /* 4) Só uma janela grava por vez ---------------------------------------- */
@@ -165,7 +194,7 @@
       if (!lock) {
         ativa = false;
         bloquearTela('O GestorQ já está aberto em outra janela', 'Para não misturar alterações, use uma janela por vez.',
-          { texto: 'Usar esta janela', acao: function(){ try { oSet.call(ss, 'gqRoubar', '1'); } catch(e){} location.reload(); } });
+          { texto: 'Usar esta janela', acao: usarEstaJanela });
         return;
       }
       return new Promise(function(){});   // mantém esta janela como a ativa enquanto estiver aberta
@@ -175,12 +204,10 @@
       bloquearTela('O GestorQ foi aberto em outra janela', 'Esta janela parou de salvar. Feche-a e continue na outra.');
     });
   }
-  var roubar = false; try { roubar = oGet.call(ss, 'gqRoubar') === '1'; oRem.call(ss, 'gqRoubar'); } catch(e){}
   pegarJanela(roubar);
 
   /* No computador o banco é local. O modo Online (Firebase) só é usado se o
      usuário escolher "Online" na tela de login (a escolha fica salva). */
-  Object.defineProperty(window, 'GQ_DESKTOP_LOCAL', { configurable: true, get: function(){ try { return oGet.call(ls, 'gqDesktopNuvem') !== '1'; } catch(e){ return true; } } });
   try { if (window.GQ_DESKTOP_LOCAL && ls.getItem('appMode') !== 'local') ls.setItem('appMode', 'local'); } catch(e){}
   document.addEventListener('click', function(e){
     var b = e.target && e.target.closest ? e.target.closest('#btnModeCloud,#btnModeLocal') : null; if (!b) return;
@@ -189,16 +216,19 @@
 
   /* 5) Sinal de vida (mantém o servidor ligado enquanto o app está aberto) */
   setInterval(function(){
-    fetch('/api/health', { cache: 'no-store', headers: { 'X-GestorQ-Token': TOKEN } }).then(function(r){ if (r.ok && !window.GQ_DESKTOP.online) { window.GQ_DESKTOP.online = true; aviso(''); agendar(); } })
-      .catch(function(){ window.GQ_DESKTOP.online = false; aviso('⚠️ O servidor do GestorQ parou. Abra o GestorQ de novo pelo atalho — as alterações pendentes serão enviadas.', true); });
-  }, 60000);
+    if (!ativa) return;
+    fetch('/api/sessao', { method: 'POST', cache: 'no-store', headers: cab(true), body: '{}' }).then(function(r){
+      if (r.status === 409) { ativa = false; outraJanela(); return; }
+      if (r.ok && !window.GQ_DESKTOP.online) { window.GQ_DESKTOP.online = true; aviso(''); agendar(); }
+    }).catch(function(){ window.GQ_DESKTOP.online = false; aviso('⚠️ O servidor do GestorQ parou. Abra o GestorQ de novo pelo atalho — as alterações pendentes serão enviadas.', true); });
+  }, 45000);
 
   /* Service worker não é usado no desktop (evita servir versão antiga em cache) */
   try { if (navigator.serviceWorker) navigator.serviceWorker.register = function(){ return Promise.reject(new Error('desativado no GestorQ Desktop')); }; } catch(e){}
 
   /* API para outras telas (backup, resumo do banco) */
   window.GQ_DESKTOP.api = function(metodo, rota, corpo){
-    return fetch(rota, { method: metodo, headers: { 'Content-Type': 'application/json', 'X-GestorQ-Token': TOKEN }, body: corpo ? JSON.stringify(corpo) : undefined }).then(function(r){ return r.json(); });
+    return fetch(rota, { method: metodo, headers: cab(true), body: corpo ? JSON.stringify(corpo) : undefined }).then(function(r){ return r.json(); });
   };
   window.GQ_DESKTOP.salvarAgora = enviar;
 })();

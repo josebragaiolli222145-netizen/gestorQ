@@ -15,7 +15,7 @@ End If
 porta = LerPorta()
 If Not Saudavel(porta) Then
   sh.Run """" & nodeExe & """ --no-warnings """ & server & """ --dados """ & dados & """", 0, False
-  For i = 1 To 80
+  For i = 1 To 240   ' até 60 s (primeira abertura após o antivírus examinar o node.exe)
     WScript.Sleep 250
     porta = LerPorta()
     If Saudavel(porta) Then Exit For
@@ -61,7 +61,7 @@ Function Saudavel(p)
   x.send
   If Err.Number = 0 Then
     ' precisa ser o GestorQ DESTE usuário do Windows (outra conta pode ter o seu na mesma porta)
-    If x.status = 200 And InStr(x.responseText, """gestorq""") > 0 And InStr(1, x.responseText, """dono"":""" & sh.ExpandEnvironmentStrings("%USERNAME%") & """", vbTextCompare) > 0 Then Saudavel = True
+    If x.status = 200 And InStr(x.responseText, """gestorq""") > 0 And InStr(1, x.responseText, """dono"":""" & CreateObject("WScript.Network").UserName & """", vbTextCompare) > 0 Then Saudavel = True
   End If
   Err.Clear
   On Error GoTo 0

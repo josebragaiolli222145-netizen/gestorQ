@@ -151,6 +151,8 @@ def main():
         crlf(DESK / 'windows' / 'LEIA-ME.txt', raiz / 'LEIA-ME.txt', 'cp1252')
         crlf(DESK / 'windows' / 'instalar.ps1', prog / 'instalar.ps1', bom=True)
         crlf(DESK / 'windows' / 'Desinstalar.bat', prog / 'Desinstalar.bat')
+        crlf(DESK / 'windows' / 'desinstalar.ps1', prog / 'desinstalar.ps1', bom=True)
+        crlf(DESK / 'windows' / 'iniciar.ps1', prog / 'iniciar.ps1', bom=True)
         crlf(DESK / 'windows' / 'GestorQ.vbs', prog / 'GestorQ.vbs', 'cp1252')
         destino = saida / ('GestorQ-Desktop-Windows-v%s.zip' % versao)
         with zipfile.ZipFile(destino, 'w', zipfile.ZIP_DEFLATED, compresslevel=9) as z:
@@ -169,13 +171,16 @@ def main():
         os.chmod(prog / 'runtime' / 'node', 0o755)
         shutil.copy(DESK / 'linux' / 'gestorq.sh', prog / 'gestorq.sh'); os.chmod(prog / 'gestorq.sh', 0o755)
         shutil.copy(DESK / 'linux' / 'instalar.sh', raiz / 'instalar.sh'); os.chmod(raiz / 'instalar.sh', 0o755)
+        shutil.copy(DESK / 'linux' / 'desinstalar.sh', prog / 'desinstalar.sh'); os.chmod(prog / 'desinstalar.sh', 0o755)
         shutil.copy(DESK / 'linux' / 'LEIA-ME.txt', raiz / 'LEIA-ME.txt')
         destino = saida / ('GestorQ-Desktop-Linux-v%s.tar.gz' % versao)
         with tarfile.open(destino, 'w:gz') as t:
             t.add(raiz, arcname='GestorQ')
         feitos.append(destino)
     for f in feitos:
-        print('  ->', f.relative_to(RAIZ), '(%.1f MB)' % (f.stat().st_size / 1048576))
+        try: nome = f.resolve().relative_to(RAIZ.resolve())
+        except ValueError: nome = f
+        print('  ->', nome, '(%.1f MB)' % (f.stat().st_size / 1048576))
 
 
 if __name__ == '__main__':

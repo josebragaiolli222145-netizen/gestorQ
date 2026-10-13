@@ -67,12 +67,21 @@ const PLANILHA = process.env.PLANILHA; // opcional: planilha real com abas PERDA
     ok('visão vw_quebra_produto_mes', db.prepare('SELECT COUNT(*) n FROM vw_quebra_produto_mes').get().n > 0);
   }
   db.close();
-  await ctx.close();
+  await page.close({ runBeforeUnload: true }); await ctx.close();   // fechar a janela libera a vaga de "janela ativa"
 
   // navegador "zerado" (perfil novo): os dados precisam vir do banco
   ({ ctx, page } = await abrir());
   ok('dados voltam do banco num navegador zerado', await page.evaluate(() => (JSON.parse(localStorage.getItem('vencidosData') || '[]')).some(p => p.nome === 'Teste Desktop Iogurte')));
-  await ctx.close();
+  // segunda janela (outro perfil de navegador) ao mesmo tempo: só uma pode salvar
+  const segunda = await abrir();
+  const bloq = () => segunda.page.evaluate(() => (document.getElementById('gqDesktopBloqueio') || {}).innerText || '');
+  ok('segunda janela é bloqueada enquanto a primeira está aberta', /outra janela/.test(await bloq()));
+  await segunda.page.click('#gqDesktopBloqueio button'); await segunda.page.waitForTimeout(3500);
+  ok('"Usar esta janela" assume a vaga', !(await bloq()) && await segunda.page.evaluate(() => !!localStorage.getItem('vencidosData')));
+  await page.evaluate(() => localStorage.setItem('gqTesteJanelaAntiga', '1')); await page.waitForTimeout(1500);
+  ok('janela antiga para de salvar', /outra janela/.test(await page.evaluate(() => (document.getElementById('gqDesktopBloqueio') || {}).innerText || '')));
+  await segunda.page.close({ runBeforeUnload: true }); await segunda.ctx.close();
+  await page.close(); await ctx.close();
   ok('backup automático criado', fs.readdirSync(path.join(dados, 'backups')).some(f => f.endsWith('.db')));
   const r401 = await fetch(base + 'api/storage').then(r => r.status);
   const semToken = await (async () => { const c = await browser.newContext(); const p = await c.newPage(); await p.route(u => !String(u).startsWith(base), r => r.abort()); await p.goto(base); await p.waitForTimeout(1500); const t = await p.evaluate(() => (document.getElementById('gqDesktopBloqueio') || {}).innerText || ''); await c.close(); return t; })();

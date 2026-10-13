@@ -13,6 +13,8 @@ if not exist "%~dp0programa\runtime\node.exe" goto pacote_incompleto
 echo.
 echo  Instalando o GestorQ Desktop...
 echo.
+where powershell >nul 2>nul
+if errorlevel 1 goto sem_powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0programa\instalar.ps1" -Origem "%~dp0programa"
 if errorlevel 1 goto falhou
 echo.
@@ -29,9 +31,21 @@ echo.
 pause
 exit /b 1
 
+:sem_powershell
+echo.
+echo  ERRO: o PowerShell do Windows nao foi encontrado ou esta bloqueado.
+echo  O instalador precisa dele. Se o computador e da empresa, peca ao TI para
+echo  liberar o PowerShell para o seu usuario e rode o Instalar.bat de novo.
+echo.
+pause
+exit /b 1
+
 :falhou
 echo.
-echo  ERRO na instalacao. Veja o log em: %LOCALAPPDATA%\GestorQ\instalacao_log.txt
+echo  ERRO na instalacao (a mensagem acima explica o motivo).
+echo  Log completo em: %LOCALAPPDATA%\GestorQ\instalacao_log.txt
+echo  Se a mensagem fala em "ExecutionPolicy" ou "bloqueado", o PowerShell esta
+echo  restrito por politica da empresa: peca ao TI para liberar.
 echo.
 pause
 exit /b 1

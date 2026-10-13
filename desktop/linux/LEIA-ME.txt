@@ -4,6 +4,6 @@ Instalar:   tar -xzf GestorQ-Desktop-Linux-*.tar.gz && cd GestorQ && ./instalar.
 Abrir:      menu de aplicativos > GestorQ (ou atalho na Área de Trabalho)
 Programa:   ~/.local/share/gestorq/programa
 Dados:      ~/.local/share/gestorq/dados  (gestorq.db, backups/, logs/)
-Desinstalar: rm -rf ~/.local/share/gestorq/programa ~/.local/share/applications/gestorq.desktop
+Desinstalar: ~/.local/share/gestorq/programa/desinstalar.sh (pergunta se apaga também os dados)
 (Os dados ficam em ~/.local/share/gestorq/dados até você apagá-los.)
 Usa Edge/Chrome/Chromium em modo janela se estiverem instalados; senão abre no navegador padrão.

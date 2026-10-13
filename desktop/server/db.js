@@ -110,6 +110,10 @@ function projetar(db, chave, valor) {
   for (const r of arr(valor)) { if (r && typeof r === 'object') ins.run(...p.linha(r)); }
 }
 
+function semSenha(json) {
+  try { const o = JSON.parse(json); if (o && typeof o === 'object') { delete o.password; delete o.senha; return JSON.stringify(o); } } catch (e) {}
+  return json;
+}
 function gravar(db, corpo) {
   const set = corpo && typeof corpo.set === 'object' && corpo.set ? corpo.set : {};
   const remove = Array.isArray(corpo && corpo.remove) ? corpo.remove : [];
@@ -125,7 +129,9 @@ function gravar(db, corpo) {
     const del = db.prepare('DELETE FROM kv WHERE chave = ?');
     for (const k of Object.keys(set)) {
       if (typeof k !== 'string' || k.length > 500) continue;
-      up.run(k, String(set[k]), agora); gravadas++;
+      let v = String(set[k]);
+      if (k === 'currentUser') v = semSenha(v);   // a sessão não precisa guardar senha no banco
+      up.run(k, v, agora); gravadas++;
       projetar(db, k, String(set[k]));
     }
     for (const k of remove) { if (typeof k !== 'string') continue; removidas += del.run(k).changes; projetar(db, k, null); }
